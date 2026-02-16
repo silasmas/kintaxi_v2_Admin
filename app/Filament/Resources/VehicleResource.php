@@ -46,7 +46,7 @@ class VehicleResource extends Resource
                     Forms\Components\Select::make('status_id')
                         ->label('Statut')
                         ->relationship('status', 'status_name')
-                        ->getOptionLabelFromRecordUsing(fn ($record) => (string) ($record->status_name ?? $record->id ?? '—'))
+                        ->getOptionLabelFromRecordUsing(fn ($record) => \App\Models\Status::formatShort($record->status_name ?? null))
                         ->required()
                         ->searchable()
                         ->preload(),
@@ -97,14 +97,21 @@ class VehicleResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn ($query) => $query->with('owner'))
             ->columns([
                 Tables\Columns\TextColumn::make('registration_number')->label('Plaque')->searchable()->sortable(),
                 Tables\Columns\TextColumn::make('mark')->label('Marque')->searchable(),
                 Tables\Columns\TextColumn::make('model')->label('Modèle')->searchable(),
-                Tables\Columns\TextColumn::make('owner.email')->label('Propriétaire'),
+                Tables\Columns\ViewColumn::make('owner')
+                    ->label('Propriétaire')
+                    ->view('filament.tables.columns.owner-with-avatar')
+                    ->sortable(query: fn ($query, string $direction) => $query->orderBy('user_id', $direction)),
                 Tables\Columns\TextColumn::make('category.category_name')->label('Catégorie')->badge(),
                 Tables\Columns\TextColumn::make('nb_places')->label('Places')->sortable(),
-                Tables\Columns\TextColumn::make('status.status_name')->label('Statut')->badge(),
+                Tables\Columns\TextColumn::make('status.status_name')
+                    ->label('Statut')
+                    ->badge()
+                    ->formatStateUsing(fn (?string $state): string => \App\Models\Status::formatShort($state)),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('category_id')->relationship('category', 'category_name')->label('Catégorie'),

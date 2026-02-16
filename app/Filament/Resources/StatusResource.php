@@ -29,7 +29,9 @@ class StatusResource extends Resource
     public static function infolist(Infolist $infolist): Infolist
     {
         return $infolist->schema([
-            TextEntry::make('status_name')->label('Nom'),
+            TextEntry::make('status_name')
+                ->label('Nom')
+                ->formatStateUsing(fn (?string $state): string => \App\Models\Status::formatShort($state)),
             TextEntry::make('status_description')->label('Description')->columnSpanFull(),
             TextEntry::make('color')->label('Couleur'),
         ])->columns(2);
@@ -60,7 +62,11 @@ class StatusResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('status_name')->label('Nom')->searchable()->sortable(),
+                Tables\Columns\TextColumn::make('status_name')
+                    ->label('Nom')
+                    ->searchable()
+                    ->sortable()
+                    ->formatStateUsing(fn (?string $state): string => \App\Models\Status::formatShort($state)),
                 Tables\Columns\TextColumn::make('status_description')->label('Description')->limit(40),
                 Tables\Columns\TextColumn::make('color')->label('Couleur')->badge(),
                 Tables\Columns\TextColumn::make('created_at')->label('Créé le')->dateTime('d/m/Y')->sortable(),

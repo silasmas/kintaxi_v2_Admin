@@ -34,7 +34,7 @@ class PaymentGatewayResource extends Resource
                 Forms\Components\Select::make('status_id')
                     ->label('Statut')
                     ->relationship('status', 'status_name')
-                    ->getOptionLabelFromRecordUsing(fn ($record) => (string) ($record->status_name ?? $record->id ?? '—'))
+                    ->getOptionLabelFromRecordUsing(fn ($record) => \App\Models\Status::formatShort($record->status_name ?? null))
                     ->required()
                     ->searchable()
                     ->preload(),
@@ -51,7 +51,10 @@ class PaymentGatewayResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('gateway_name')->label('Nom')->searchable()->sortable(),
-                Tables\Columns\TextColumn::make('status.status_name')->label('Statut')->badge(),
+                Tables\Columns\TextColumn::make('status.status_name')
+                    ->label('Statut')
+                    ->badge()
+                    ->formatStateUsing(fn (?string $state): string => \App\Models\Status::formatShort($state)),
             ])
             ->actions([
                 Tables\Actions\ViewAction::make(),

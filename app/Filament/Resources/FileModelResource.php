@@ -43,7 +43,7 @@ class FileModelResource extends Resource
                 Forms\Components\Select::make('status_id')
                     ->label('Statut')
                     ->relationship('status', 'status_name')
-                    ->getOptionLabelFromRecordUsing(fn ($record) => (string) ($record->status_name ?? $record->id ?? '—'))
+                    ->getOptionLabelFromRecordUsing(fn ($record) => \App\Models\Status::formatShort($record->status_name ?? null))
                     ->required()
                     ->searchable()
                     ->preload(),
@@ -66,7 +66,10 @@ class FileModelResource extends Resource
                 Tables\Columns\TextColumn::make('id')->label('ID')->sortable(),
                 Tables\Columns\TextColumn::make('file_name')->label('Nom')->searchable()->limit(40),
                 Tables\Columns\TextColumn::make('vehicle.registration_number')->label('Véhicule'),
-                Tables\Columns\TextColumn::make('status.status_name')->label('Statut')->badge(),
+                Tables\Columns\TextColumn::make('status.status_name')
+                    ->label('Statut')
+                    ->badge()
+                    ->formatStateUsing(fn (?string $state): string => \App\Models\Status::formatShort($state)),
                 Tables\Columns\TextColumn::make('created_at')->label('Créé le')->dateTime('d/m/Y')->sortable(),
             ])
             ->actions([

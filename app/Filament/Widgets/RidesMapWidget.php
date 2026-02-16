@@ -3,6 +3,7 @@
 namespace App\Filament\Widgets;
 
 use App\Models\Ride;
+use Filament\Notifications\Notification;
 use Filament\Widgets\Widget;
 use Illuminate\Support\Collection;
 
@@ -129,6 +130,50 @@ class RidesMapWidget extends Widget
         }, $withoutBothCoords)));
     }
 
+    /**
+     * Extrait une adresse lisible (zone, quartier, description) depuis un champ JSON.
+     */
+    public function extractReadableAddress(mixed $raw): string
+    {
+        if (empty($raw)) {
+            return '—';
+        }
+        if (is_string($raw)) {
+            $decoded = json_decode($raw, true);
+            if (! is_array($decoded)) {
+                return $this->replaceCountryWithRdc(\Illuminate\Support\Str::limit(trim($raw), 40));
+            }
+        } else {
+            $decoded = $raw;
+        }
+        $zone = $decoded['zone'] ?? $decoded['neighborhood'] ?? $decoded['quartier'] ?? null;
+        $description = $decoded['description'] ?? $decoded['address'] ?? $decoded['formatted_address'] ?? null;
+        $raw = $zone && $description
+            ? $zone . ' – ' . \Illuminate\Support\Str::limit($description, 40)
+            : \Illuminate\Support\Str::limit(trim($zone ?? $description ?? json_encode($decoded)), 50);
+        $result = $raw ?: '—';
+
+        return $this->replaceCountryWithRdc($result);
+    }
+
+    /**
+     * Remplace le nom complet du pays par « RDC » quand c'est la République Démocratique du Congo.
+     */
+    private function replaceCountryWithRdc(string $text): string
+    {
+        $rdcVariants = [
+            'République Démocratique du Congo',
+            'République democratique du Congo',
+            'Democratic Republic of the Congo',
+        ];
+        foreach ($rdcVariants as $variant) {
+            $text = str_ireplace($variant, 'RDC', $text);
+        }
+        $text = preg_replace('/République\s+Démocratique\s+du\s+Congo/i', 'RDC', $text);
+
+        return $text;
+    }
+
     public function getViewData(): array
     {
         $rides = $this->getRidesWithCoordinates();
@@ -136,12 +181,48 @@ class RidesMapWidget extends Widget
         $defaultLat = static::$defaultLat;
         $defaultLng = static::$defaultLng;
 
+        $ridesForTable = array_map(function ($ride, $index) {
+            return [
+                'id' => $ride['id'],
+                'numero' => $index + 1,
+                'start_display' => $this->extractReadableAddress($ride['start_location'] ?? $ride['pickup_location'] ?? null),
+                'end_display' => $this->extractReadableAddress($ride['end_location'] ?? null),
+                'ride_status' => $ride['ride_status'],
+                'cost' => $ride['cost'],
+            ];
+        }, array_slice($rides, 0, 10), array_keys(array_slice($rides, 0, 10)));
+
         return [
             'rides' => $rides,
+            'ridesForTable' => $ridesForTable,
             'markers' => array_values($rides),
             'ridesToGeocode' => $ridesToGeocode,
             'defaultLat' => $defaultLat,
             'defaultLng' => $defaultLng,
         ];
+    }
+
+    public function updateRideStatus(int $rideId, string $status): void
+    {
+        $ride = Ride::find($rideId);
+        if ($ride) {
+            $ride->update(['ride_status' => $status]);
+            Notification::make()
+                ->success()
+                ->title('Statut mis à jour')
+                ->send();
+        }
+    }
+
+    public function deleteRide(int $rideId): void
+    {
+        $ride = Ride::find($rideId);
+        if ($ride) {
+            $ride->delete();
+            Notification::make()
+                ->success()
+                ->title('Course supprimée')
+                ->send();
+        }
     }
 }

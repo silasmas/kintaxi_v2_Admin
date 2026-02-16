@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Filament\Models\Contracts\FilamentUser;
+use Filament\Models\Contracts\HasAvatar;
 use Filament\Models\Contracts\HasName;
 use Filament\Panel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -10,10 +11,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Spatie\Permission\Traits\HasRoles;
 
-class User extends Authenticatable implements FilamentUser, HasName
+class User extends Authenticatable implements FilamentUser, HasAvatar, HasName
 {
-    use HasFactory, Notifiable;
+    use HasFactory, HasRoles, Notifiable;
 
     protected $fillable = [
         'name',
@@ -65,6 +67,46 @@ class User extends Authenticatable implements FilamentUser, HasName
     public function canAccessPanel(Panel $panel): bool
     {
         return true;
+    }
+
+    public function getFilamentAvatarUrl(): ?string
+    {
+        if (empty($this->avatar_url)) {
+            return null;
+        }
+
+        $url = $this->avatar_url;
+        if (! str_starts_with($url, 'http://') && ! str_starts_with($url, 'https://')) {
+            return asset(ltrim($url, '/'));
+        }
+
+        return $url;
+    }
+
+    /**
+     * Retourne les initiales du prénom et nom (ex: "Jean Dupont" → "JD").
+     */
+    public function getFilamentInitials(): string
+    {
+        $name = trim($this->firstname . ' ' . $this->lastname);
+        if ($name !== '') {
+            $parts = preg_split('/\s+/', $name, 2);
+            $initials = '';
+            foreach (array_slice($parts, 0, 2) as $part) {
+                $initials .= mb_substr($part, 0, 1);
+            }
+            return strtoupper($initials) ?: '?';
+        }
+        if (filled($this->email)) {
+            return strtoupper(mb_substr($this->email, 0, 1));
+        }
+        if (filled($this->username)) {
+            return strtoupper(mb_substr($this->username, 0, 1));
+        }
+        if (filled($this->phone)) {
+            return strtoupper(mb_substr($this->phone, 0, 1));
+        }
+        return '?';
     }
 
     public function getFilamentName(): string

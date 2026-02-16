@@ -1,3 +1,10 @@
+@push('styles')
+<style>
+    /* Carte qui passe sous la barre de menu au scroll (Leaflet utilise z-index ~400) */
+    .fi-topbar { z-index: 1000 !important; }
+</style>
+@endpush
+
 <x-filament-widgets::widget>
     <x-filament::section>
         <x-slot name="heading">
@@ -24,48 +31,74 @@
             </div>
             <script type="application/json" id="{{ $configId }}">@json($mapConfig)</script>
 
-            @if(count($rides) > 0)
-                <div class="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-                    <table class="w-full text-sm text-left rtl:text-right text-gray-900 dark:text-gray-100">
+            @if(count($ridesForTable ?? []) > 0)
+                <div class="rounded-lg border border-gray-200 dark:border-gray-700 overflow-x-auto">
+                    <table class="w-full text-sm text-left rtl:text-right text-gray-900 dark:text-gray-100 whitespace-nowrap min-w-max">
                         <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-800 dark:text-gray-300">
                             <tr>
                                 <th class="px-4 py-3">#</th>
-                                <th class="px-4 py-3">Départ</th>
-                                <th class="px-4 py-3">Arrivée</th>
-                                <th class="px-4 py-3">Statut</th>
-                                <th class="px-4 py-3">Coût</th>
-                                <th class="px-4 py-3"></th>
+                                <th class="px-4 py-3 min-w-[180px]">Départ</th>
+                                <th class="px-4 py-3 min-w-[180px]">Arrivée</th>
+                                <th class="px-4 py-3 min-w-[115px]">Statut</th>
+                                <th class="px-4 py-3 min-w-[100px]">Coût</th>
+                                <th class="px-4 py-3 min-w-[140px]">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach(array_slice($rides, 0, 10) as $ride)
-                                <tr class="bg-white dark:bg-gray-900 border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
-                                    <td class="px-4 py-2">{{ $ride['id'] }}</td>
-                                    <td class="px-4 py-2 max-w-[200px] truncate" title="{{ $ride['start_location'] ?? '—' }}">
-                                        {{ \Illuminate\Support\Str::limit($ride['start_location'] ?? '—', 30) }}
+                            @php
+                                $statusOptions = [
+                                    'requested' => 'Demandée',
+                                    'accepted' => 'Acceptée',
+                                    'in_progress' => 'En cours',
+                                    'completed' => 'Terminée',
+                                    'canceled' => 'Annulée',
+                                ];
+                            @endphp
+                            @foreach($ridesForTable as $ride)
+                                <tr wire:key="ride-row-{{ $ride['id'] }}" class="bg-white dark:bg-gray-900 border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
+                                    <td class="px-4 py-2 font-medium">{{ $ride['numero'] }}</td>
+                                    <td class="px-4 py-2 min-w-[180px] cursor-help"
+                                        x-data="{}"
+                                        x-tooltip="{ content: @js($ride['start_display']), theme: $store?.theme ?? 'light' }"
+                                        title="{{ $ride['start_display'] }}"
+                                    >{{ $ride['start_display'] }}</td>
+                                    <td class="px-4 py-2 min-w-[180px] cursor-help"
+                                        x-data="{}"
+                                        x-tooltip="{ content: @js($ride['end_display']), theme: $store?.theme ?? 'light' }"
+                                        title="{{ $ride['end_display'] }}"
+                                    >{{ $ride['end_display'] }}</td>
+                                    <td class="px-4 py-2 min-w-[115px] overflow-visible">
+                                        <select
+                                            wire:change="updateRideStatus({{ $ride['id'] }}, $event.target.value)"
+                                            class="fi-select-input block w-full min-w-[105px] rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm focus:border-primary-500 focus:ring-primary-500 appearance-none bg-white dark:bg-gray-800 py-2 pr-8"
+                                            style="background-image: url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 fill=%22none%22 viewBox=%220 0 20 20%22%3E%3Cpath stroke=%22%236b7280%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22 stroke-width=%221.5%22 d=%22M6 8l4 4 4-4%22/%3E%3C/svg%3E'); background-repeat: no-repeat; background-position: right 0.5rem center; background-size: 1.5em 1.5em;"
+                                        >
+                                            @foreach($statusOptions as $value => $label)
+                                                <option value="{{ $value }}" {{ $ride['ride_status'] === $value ? 'selected' : '' }}>{{ $label }}</option>
+                                            @endforeach
+                                        </select>
                                     </td>
-                                    <td class="px-4 py-2 max-w-[200px] truncate" title="{{ $ride['end_location'] ?? '—' }}">
-                                        {{ \Illuminate\Support\Str::limit($ride['end_location'] ?? '—', 30) }}
-                                    </td>
-                                    <td class="px-4 py-2">
-                                        @php
-                                            $statusLabels = [
-                                                'requested' => 'Demandée',
-                                                'accepted' => 'Acceptée',
-                                                'in_progress' => 'En cours',
-                                                'completed' => 'Terminée',
-                                                'canceled' => 'Annulée',
-                                            ];
-                                        @endphp
-                                        <span class="px-2 py-0.5 rounded text-xs {{ $ride['ride_status'] === 'completed' ? 'bg-success-100 text-success-700 dark:bg-success-900/30 dark:text-success-400' : ($ride['ride_status'] === 'canceled' ? 'bg-danger-100 text-danger-700 dark:bg-danger-900/30 dark:text-danger-400' : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300') }}">
-                                            {{ $statusLabels[$ride['ride_status']] ?? $ride['ride_status'] }}
-                                        </span>
-                                    </td>
-                                    <td class="px-4 py-2">{{ $ride['cost'] !== null ? number_format($ride['cost'], 0, ',', ' ') : '—' }}</td>
-                                    <td class="px-4 py-2">
+                                    @php
+                                        $costTooltip = $ride['cost'] !== null ? 'Coût : ' . number_format($ride['cost'], 0, ',', ' ') . ' CDF' : '—';
+                                    @endphp
+                                    <td class="px-4 py-2 min-w-[100px] cursor-help"
+                                        x-data="{}"
+                                        x-tooltip="{ content: @js($costTooltip), theme: $store?.theme ?? 'light' }"
+                                        title="{{ $costTooltip }}"
+                                    >{{ $ride['cost'] !== null ? number_format($ride['cost'], 0, ',', ' ') . ' CDF' : '—' }}</td>
+                                    <td class="px-4 py-2 min-w-[140px] flex items-center gap-2">
                                         <a href="{{ url('/admin/rides/' . $ride['id']) }}" class="text-primary-600 hover:underline dark:text-primary-400">
                                             Voir
                                         </a>
+                                        <span class="text-gray-400">|</span>
+                                        <button
+                                            type="button"
+                                            wire:click="deleteRide({{ $ride['id'] }})"
+                                            wire:confirm="Êtes-vous sûr de vouloir supprimer cette course ?"
+                                            class="text-danger-600 hover:underline dark:text-danger-400"
+                                        >
+                                            Supprimer
+                                        </button>
                                     </td>
                                 </tr>
                             @endforeach
@@ -119,6 +152,8 @@
                             var allBounds = [];
                             var greenIcon = L.divIcon({ className: 'rides-marker-depart', html: '<span style="background:#22c55e;color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:bold;">D</span>', iconSize: [22, 22], iconAnchor: [11, 11] });
                             var redIcon = L.divIcon({ className: 'rides-marker-arrivee', html: '<span style="background:#ef4444;color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:bold;">A</span>', iconSize: [22, 22], iconAnchor: [11, 11] });
+                            var carSvg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#eab308" width="28" height="28"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.22.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/></svg>';
+                            var carIcon = L.divIcon({ className: 'rides-marker-car', html: carSvg, iconSize: [28, 28], iconAnchor: [14, 14] });
 
                             function addRidePoints(ride, startLat, startLng, endLat, endLng) {
                                 var label = 'Course #' + ride.id;
@@ -132,6 +167,9 @@
                                 }
                                 if (startLat != null && startLng != null && endLat != null && endLng != null) {
                                     L.polyline([[startLat, startLng], [endLat, endLng]], { color: '#3b82f6', weight: 3, opacity: 0.7 }).addTo(map);
+                                    var midLat = (startLat + endLat) / 2, midLng = (startLng + endLng) / 2;
+                                    L.marker([midLat, midLng], { icon: carIcon }).addTo(map).bindPopup('<strong>Voiture</strong> – ' + label);
+                                    allBounds.push([midLat, midLng]);
                                 }
                             }
 
@@ -164,6 +202,9 @@
                                                     allBounds.push([lat, lng]);
                                                     if (ride._startLat != null && ride._startLng != null) {
                                                         L.polyline([[ride._startLat, ride._startLng], [lat, lng]], { color: '#3b82f6', weight: 3, opacity: 0.7 }).addTo(map);
+                                                        var midLat = (ride._startLat + lat) / 2, midLng = (ride._startLng + lng) / 2;
+                                                        L.marker([midLat, midLng], { icon: carIcon }).addTo(map).bindPopup('<strong>Voiture</strong> – ' + label);
+                                                        allBounds.push([midLat, midLng]);
                                                     }
                                                 } else {
                                                     ride._startLat = lat;

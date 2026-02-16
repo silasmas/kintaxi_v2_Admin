@@ -44,7 +44,7 @@ class PaymentResource extends Resource
                 Forms\Components\Select::make('status_id')
                     ->label('Statut')
                     ->relationship('status', 'status_name')
-                    ->getOptionLabelFromRecordUsing(fn ($record) => (string) ($record->status_name ?? $record->id ?? '—'))
+                    ->getOptionLabelFromRecordUsing(fn ($record) => \App\Models\Status::formatShort($record->status_name ?? null))
                     ->searchable()
                     ->preload(),
                 Forms\Components\TextInput::make('reference')->label('Référence')->maxLength(45),

@@ -30,7 +30,9 @@ class VehicleCategoryResource extends Resource
     {
         return $infolist->schema([
             TextEntry::make('category_name')->label('Nom'),
-            TextEntry::make('status.status_name')->label('Statut'),
+            TextEntry::make('status.status_name')
+                ->label('Statut')
+                ->formatStateUsing(fn (?string $state): string => \App\Models\Status::formatShort($state)),
             TextEntry::make('category_description')->label('Description')->columnSpanFull(),
         ])->columns(2);
     }
@@ -43,7 +45,7 @@ class VehicleCategoryResource extends Resource
                 Forms\Components\Select::make('status_id')
                     ->label('Statut')
                     ->relationship('status', 'status_name')
-                    ->getOptionLabelFromRecordUsing(fn ($record) => (string) ($record->status_name ?? $record->id ?? '—'))
+                    ->getOptionLabelFromRecordUsing(fn ($record) => \App\Models\Status::formatShort($record->status_name ?? null))
                     ->required()
                     ->searchable()
                     ->preload(),
@@ -67,7 +69,10 @@ class VehicleCategoryResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('category_name')->label('Nom')->searchable()->sortable(),
-                Tables\Columns\TextColumn::make('status.status_name')->label('Statut')->badge(),
+                Tables\Columns\TextColumn::make('status.status_name')
+                    ->label('Statut')
+                    ->badge()
+                    ->formatStateUsing(fn (?string $state): string => \App\Models\Status::formatShort($state)),
                 Tables\Columns\TextColumn::make('vehicles_count')->label('Véhicules')->counts('vehicles'),
             ])
             ->actions([

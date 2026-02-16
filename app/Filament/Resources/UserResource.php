@@ -34,7 +34,8 @@ class UserResource extends Resource
             TextEntry::make('lastname')->label('Nom'),
             TextEntry::make('email')->label('Email'),
             TextEntry::make('phone')->label('Téléphone'),
-            TextEntry::make('role.role_name')->label('Rôle'),
+            TextEntry::make('role.role_name')->label('Rôle app'),
+            TextEntry::make('roles.name')->label('Rôles Shield')->badge(),
             TextEntry::make('wallet_balance')->label('Solde'),
         ])->columns(2);
     }
@@ -47,7 +48,7 @@ class UserResource extends Resource
                     Forms\Components\Select::make('status_id')
                         ->label('Statut')
                         ->relationship('status', 'status_name')
-                        ->getOptionLabelFromRecordUsing(fn ($record) => (string) ($record->status_name ?? $record->id ?? '—'))
+                        ->getOptionLabelFromRecordUsing(fn ($record) => \App\Models\Status::formatShort($record->status_name ?? null))
                         ->searchable()
                         ->preload(),
                     Forms\Components\Select::make('role_id')
@@ -74,6 +75,13 @@ class UserResource extends Resource
                     Forms\Components\Textarea::make('address_2')->label('Adresse 2')->columnSpanFull(),
                     Forms\Components\TextInput::make('p_o_box')->label('Boîte postale')->maxLength(45),
                 ])->columns(2)->collapsed(),
+                Forms\Components\Section::make('Rôles & Permissions (Shield)')->schema([
+                    Forms\Components\CheckboxList::make('roles')
+                        ->relationship('roles', 'name')
+                        ->label('Rôles Filament')
+                        ->searchable()
+                        ->columns(2),
+                ])->columns(1)->collapsed(),
                 Forms\Components\Section::make('Sécurité & Compte')->schema([
                     Forms\Components\TextInput::make('password')
                         ->password()
@@ -101,7 +109,10 @@ class UserResource extends Resource
                 Tables\Columns\TextColumn::make('lastname')->label('Nom')->searchable(),
                 Tables\Columns\TextColumn::make('email')->searchable()->sortable(),
                 Tables\Columns\TextColumn::make('phone')->searchable(),
-                Tables\Columns\TextColumn::make('role.role_name')->label('Rôle')->badge(),
+                Tables\Columns\TextColumn::make('role.role_name')->label('Rôle app')->badge(),
+                Tables\Columns\TextColumn::make('roles.name')
+                    ->label('Rôles Shield')
+                    ->badge(),
                 Tables\Columns\TextColumn::make('wallet_balance')->label('Solde')->numeric(decimalPlaces: 2),
                 Tables\Columns\TextColumn::make('created_at')->label('Créé le')->dateTime('d/m/Y')->sortable(),
             ])

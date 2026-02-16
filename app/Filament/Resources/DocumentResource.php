@@ -34,7 +34,7 @@ class DocumentResource extends Resource
                 Forms\Components\Select::make('status_id')
                     ->label('Statut')
                     ->relationship('status', 'status_name')
-                    ->getOptionLabelFromRecordUsing(fn ($record) => (string) ($record->status_name ?? $record->id ?? '—'))
+                    ->getOptionLabelFromRecordUsing(fn ($record) => \App\Models\Status::formatShort($record->status_name ?? null))
                     ->required()
                     ->searchable()
                     ->preload(),

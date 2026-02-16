@@ -51,4 +51,9 @@ class PricingRule extends Model
     {
         return $this->belongsTo(User::class, 'updated_by');
     }
+
+    public function zone(): BelongsTo
+    {
+        return $this->belongsTo(Zone::class);
+    }
 }
