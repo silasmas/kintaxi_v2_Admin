@@ -2,6 +2,8 @@
 
 Shield est intégré pour la gestion des permissions et rôles dans l'admin Filament.
 
+**Important** : Par défaut, le Dashboard et les widgets nécessitent des autorisations. Les utilisateurs sans le rôle `super_admin` doivent avoir les permissions assignées via un rôle (ex. `page_Dashboard`, `widget_StatsOverviewWidget`, etc.).
+
 ## Commandes utiles
 
 ### 1. Générer les policies et permissions

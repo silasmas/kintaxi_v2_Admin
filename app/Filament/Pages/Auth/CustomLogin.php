@@ -4,6 +4,7 @@ namespace App\Filament\Pages\Auth;
 
 use App\Models\User;
 use DanHarrin\LivewireRateLimiting\Exceptions\TooManyRequestsException;
+use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\Component;
 use Filament\Forms\Components\TextInput;
@@ -12,6 +13,7 @@ use Filament\Http\Responses\Auth\Contracts\LoginResponse;
 use Filament\Models\Contracts\FilamentUser;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -19,6 +21,33 @@ use Illuminate\Validation\ValidationException;
  */
 class CustomLogin extends \Filament\Pages\Auth\Login
 {
+    public function getSubheading(): string | Htmlable | null
+    {
+        if (Filament::auth()->check()) {
+            $user = Filament::auth()->user();
+            $name = $user ? ($user->getFilamentName() ?? $user->email ?? 'Utilisateur') : 'Utilisateur';
+
+            return "Vous êtes connecté en tant que {$name}. Pour vous connecter avec un autre compte, déconnectez-vous d'abord.";
+        }
+
+        return parent::getSubheading();
+    }
+    public function mount(): void
+    {
+        // Ne pas rediriger si déjà connecté : on affiche la page avec l'option de se déconnecter
+        if (! Filament::auth()->check()) {
+            $this->form->fill();
+        }
+    }
+
+    public function logout(): void
+    {
+        Filament::auth()->logout();
+        session()->invalidate();
+        session()->regenerateToken();
+
+        $this->redirect(Filament::getLoginUrl());
+    }
     /**
      * Détermine le type d'identifiant (email, phone, username) à partir de la valeur saisie.
      */
@@ -68,6 +97,24 @@ class CustomLogin extends \Filament\Pages\Auth\Login
         }
 
         return $credentials;
+    }
+
+    /**
+     * @return array<Action | ActionGroup>
+     */
+    protected function getFormActions(): array
+    {
+        $actions = [$this->getAuthenticateFormAction()];
+
+        if (Filament::auth()->check()) {
+            $actions[] = Action::make('logout')
+                ->label('Se déconnecter')
+                ->color('gray')
+                ->action('logout')
+                ->icon('heroicon-o-arrow-left-on-rectangle');
+        }
+
+        return $actions;
     }
 
     /**

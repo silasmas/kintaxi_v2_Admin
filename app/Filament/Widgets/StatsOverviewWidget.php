@@ -2,6 +2,7 @@
 
 namespace App\Filament\Widgets;
 
+use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
 use App\Models\AppNotification;
 use App\Models\Country;
 use App\Models\Currency;
@@ -20,6 +21,8 @@ use Illuminate\Support\Number;
 
 class StatsOverviewWidget extends BaseWidget
 {
+    use HasWidgetShield;
+
     protected static ?int $sort = 1;
 
     protected int|string|array $columnSpan = 'full';

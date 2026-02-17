@@ -3,12 +3,14 @@
 namespace App\Filament\Widgets;
 
 use App\Models\Ride;
+use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
 use Filament\Notifications\Notification;
 use Filament\Widgets\Widget;
 use Illuminate\Support\Collection;
 
 class RidesMapWidget extends Widget
 {
+    use HasWidgetShield;
     protected static string $view = 'filament.widgets.rides-map-widget';
 
     protected static ?int $sort = 2;

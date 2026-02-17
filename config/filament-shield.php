@@ -68,7 +68,7 @@ return [
         'enabled' => true,
 
         'pages' => [
-            'Dashboard',
+            // Dashboard retiré : accès par autorisation
         ],
 
         'widgets' => [
