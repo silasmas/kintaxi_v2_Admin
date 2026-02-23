@@ -17,4 +17,19 @@ class ViewUser extends ViewRecord
             Actions\DeleteAction::make(),
         ];
     }
+
+    public function mount(int | string $record): void
+    {
+        parent::mount($record);
+
+        $this->record->load([
+            'vehicles.shape',
+            'currentVehicle',
+            'transactions',
+            'documents',
+            'status',
+            'role',
+            'roles',
+        ]);
+    }
 }

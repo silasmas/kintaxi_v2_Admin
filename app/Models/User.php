@@ -77,8 +77,12 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasName
 
         $url = $this->avatar_url;
         if (! str_starts_with($url, 'http://') && ! str_starts_with($url, 'https://')) {
-            return asset(ltrim($url, '/'));
+            $url = asset(ltrim($url, '/'));
         }
+
+        // Cache busting : forcer le rechargement après mise à jour du profil
+        $separator = str_contains($url, '?') ? '&' : '?';
+        $url .= $separator . 'v=' . ($this->updated_at?->timestamp ?? time());
 
         return $url;
     }

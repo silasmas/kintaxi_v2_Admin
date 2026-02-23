@@ -2,12 +2,13 @@
 
 namespace App\Filament\Pages\Auth;
 
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Form;
-use Filament\Forms\Get;
+use Filament\Facades\Filament;
 use Filament\Pages\Auth\EditProfile as BaseEditProfile;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 
 class EditProfile extends BaseEditProfile
 {
@@ -38,11 +39,15 @@ class EditProfile extends BaseEditProfile
                                 TextInput::make('username')
                                     ->label('Nom d\'utilisateur')
                                     ->maxLength(255),
-                                TextInput::make('avatar_url')
-                                    ->label('URL photo de profil')
-                                    ->url()
-                                    ->maxLength(500)
-                                    ->placeholder('https://...'),
+                                FileUpload::make('avatar')
+                                    ->label('Photo de profil')
+                                    ->avatar()
+                                    ->imageEditor()
+                                    ->circleCropper()
+                                    ->disk($this->getAvatarDisk())
+                                    ->directory('avatars')
+                                    ->image()
+                                    ->maxSize(2048),
                             ])
                             ->columns(2),
                         Section::make('Modifier le mot de passe')
@@ -65,6 +70,11 @@ class EditProfile extends BaseEditProfile
     {
         unset($data['password'], $data['passwordConfirmation']);
 
+        // Mapper avatar_url vers avatar pour l'affichage (chemin relatif uniquement)
+        if (! empty($data['avatar_url']) && ! str_starts_with($data['avatar_url'], 'http')) {
+            $data['avatar'] = ltrim($data['avatar_url'], '/');
+        }
+
         return $data;
     }
 
@@ -78,6 +88,40 @@ class EditProfile extends BaseEditProfile
             $data['password'] = Hash::make($data['password']);
         }
 
+        // Convertir le chemin de l'avatar uploadé en URL pour avatar_url
+        $avatarPath = $data['avatar'] ?? null;
+        if (! empty($avatarPath)) {
+            $path = is_array($avatarPath) ? reset($avatarPath) : $avatarPath;
+            $disk = $this->getAvatarDisk();
+            $data['avatar_url'] = Storage::disk($disk)->url($path);
+        }
+        unset($data['avatar']);
+
         return $data;
+    }
+
+    protected function getRedirectUrl(): ?string
+    {
+        // Recharger la page pour afficher la nouvelle photo dans le menu
+        return static::getUrl();
+    }
+
+    protected function afterSave(): void
+    {
+        // Rafraîchir l'utilisateur en session pour que le menu affiche la nouvelle photo
+        $user = $this->getUser();
+        $user->refresh();
+        Filament::auth()->setUser($user);
+    }
+
+    /**
+     * Disque pour les avatars : "public" en local (fichiers accessibles via /storage),
+     * sinon le disque Filament configuré (s3_media en prod).
+     */
+    protected function getAvatarDisk(): string
+    {
+        $disk = env('FILAMENT_FILESYSTEM_DISK', 's3_media');
+        // Le disque "local" stocke dans storage/app/private = non accessible en HTTP
+        return $disk === 'local' ? 'public' : $disk;
     }
 }
