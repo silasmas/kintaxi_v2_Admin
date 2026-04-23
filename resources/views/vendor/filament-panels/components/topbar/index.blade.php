@@ -151,22 +151,24 @@
             @endif
         @endif
 
+        <div class="flex-1 flex justify-center px-2 lg:px-4">
+            {{ \Filament\Support\Facades\FilamentView::renderHook(\Filament\View\PanelsRenderHook::GLOBAL_SEARCH_BEFORE) }}
+
+            <div class="w-full max-w-5xl">
+                @livewire(Filament\Livewire\GlobalSearch::class)
+            </div>
+
+            {{ \Filament\Support\Facades\FilamentView::renderHook(\Filament\View\PanelsRenderHook::GLOBAL_SEARCH_AFTER) }}
+        </div>
+
         <div
             @if (filament()->hasTenancy())
                 x-persist="topbar.end.panel-{{ filament()->getId() }}.tenant-{{ filament()->getTenant()?->getKey() }}"
             @else
                 x-persist="topbar.end.panel-{{ filament()->getId() }}"
             @endif
-            class="ms-auto flex items-center gap-x-4"
+            class="flex items-center gap-x-4"
         >
-            {{ \Filament\Support\Facades\FilamentView::renderHook(\Filament\View\PanelsRenderHook::GLOBAL_SEARCH_BEFORE) }}
-
-            @if (filament()->isGlobalSearchEnabled())
-                @livewire(Filament\Livewire\GlobalSearch::class)
-            @endif
-
-            {{ \Filament\Support\Facades\FilamentView::renderHook(\Filament\View\PanelsRenderHook::GLOBAL_SEARCH_AFTER) }}
-
             @if (filament()->auth()->check())
                 @if (filament()->hasDatabaseNotifications())
                     @livewire(Filament\Livewire\DatabaseNotifications::class, [

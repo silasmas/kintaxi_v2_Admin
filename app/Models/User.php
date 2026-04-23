@@ -9,6 +9,7 @@ use Filament\Panel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
@@ -45,6 +46,8 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasName
         'wallet_balance',
         'loyalty_point',
         'current_vehicle_id',
+        'kyc_verified',
+        'kyc_verified_at',
     ];
 
     protected $hidden = [
@@ -61,6 +64,8 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasName
             'birthdate' => 'date',
             'password' => 'hashed',
             'wallet_balance' => 'float',
+            'kyc_verified' => 'boolean',
+            'kyc_verified_at' => 'datetime',
         ];
     }
 
@@ -82,7 +87,7 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasName
 
         // Cache busting : forcer le rechargement après mise à jour du profil
         $separator = str_contains($url, '?') ? '&' : '?';
-        $url .= $separator . 'v=' . ($this->updated_at?->timestamp ?? time());
+        $url .= $separator.'v='.($this->updated_at?->timestamp ?? time());
 
         return $url;
     }
@@ -92,13 +97,14 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasName
      */
     public function getFilamentInitials(): string
     {
-        $name = trim($this->firstname . ' ' . $this->lastname);
+        $name = trim($this->firstname.' '.$this->lastname);
         if ($name !== '') {
             $parts = preg_split('/\s+/', $name, 2);
             $initials = '';
             foreach (array_slice($parts, 0, 2) as $part) {
                 $initials .= mb_substr($part, 0, 1);
             }
+
             return strtoupper($initials) ?: '?';
         }
         if (filled($this->email)) {
@@ -110,12 +116,13 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasName
         if (filled($this->phone)) {
             return strtoupper(mb_substr($this->phone, 0, 1));
         }
+
         return '?';
     }
 
     public function getFilamentName(): string
     {
-        $name = trim($this->firstname . ' ' . $this->lastname);
+        $name = trim($this->firstname.' '.$this->lastname);
         if ($name !== '') {
             return $name;
         }
@@ -128,6 +135,7 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasName
         if (filled($this->phone)) {
             return (string) $this->phone;
         }
+
         return 'Utilisateur';
     }
 
@@ -194,5 +202,15 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasName
     public function notificationsReceived(): HasMany
     {
         return $this->hasMany(AppNotification::class, 'notification_to');
+    }
+
+    public function kycVerifications(): HasMany
+    {
+        return $this->hasMany(KycVerification::class, 'user_id');
+    }
+
+    public function latestKycVerification(): HasOne
+    {
+        return $this->hasOne(KycVerification::class, 'user_id')->latestOfMany('updated_at');
     }
 }

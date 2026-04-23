@@ -6,8 +6,8 @@ use App\Filament\Resources\VehicleResource\Pages;
 use App\Models\Vehicle;
 use Filament\Forms;
 use Filament\Forms\Form;
-use Filament\Infolists\Infolist;
 use Filament\Infolists\Components\TextEntry;
+use Filament\Infolists\Infolist;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -25,6 +25,16 @@ class VehicleResource extends Resource
     protected static ?string $pluralModelLabel = 'Véhicules';
 
     protected static ?string $navigationGroup = 'Véhicules';
+
+    public static function getNavigationBadge(): ?string
+    {
+        return (string) static::getModel()::query()->count();
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'gray';
+    }
 
     public static function infolist(Infolist $infolist): Infolist
     {

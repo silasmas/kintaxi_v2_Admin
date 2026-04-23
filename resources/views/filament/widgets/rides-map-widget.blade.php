@@ -39,9 +39,9 @@
                                 <th class="px-4 py-3">#</th>
                                 <th class="px-4 py-3 min-w-[180px]">Départ</th>
                                 <th class="px-4 py-3 min-w-[180px]">Arrivée</th>
-                                <th class="px-4 py-3 min-w-[115px]">Statut</th>
+                                <th class="px-4 py-3 min-w-[130px]">Statut</th>
                                 <th class="px-4 py-3 min-w-[100px]">Coût</th>
-                                <th class="px-4 py-3 min-w-[140px]">Actions</th>
+                                <th class="px-4 py-3 min-w-[90px]">Action</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -67,16 +67,20 @@
                                         x-tooltip="{ content: @js($ride['end_display']), theme: $store?.theme ?? 'light' }"
                                         title="{{ $ride['end_display'] }}"
                                     >{{ $ride['end_display'] }}</td>
-                                    <td class="px-4 py-2 min-w-[115px] overflow-visible">
-                                        <select
-                                            wire:change="updateRideStatus({{ $ride['id'] }}, $event.target.value)"
-                                            class="fi-select-input block w-full min-w-[105px] rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm focus:border-primary-500 focus:ring-primary-500 appearance-none bg-white dark:bg-gray-800 py-2 pr-8"
-                                            style="background-image: url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 fill=%22none%22 viewBox=%220 0 20 20%22%3E%3Cpath stroke=%22%236b7280%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22 stroke-width=%221.5%22 d=%22M6 8l4 4 4-4%22/%3E%3C/svg%3E'); background-repeat: no-repeat; background-position: right 0.5rem center; background-size: 1.5em 1.5em;"
-                                        >
-                                            @foreach($statusOptions as $value => $label)
-                                                <option value="{{ $value }}" {{ $ride['ride_status'] === $value ? 'selected' : '' }}>{{ $label }}</option>
-                                            @endforeach
-                                        </select>
+                                    <td class="px-4 py-2 min-w-[130px]">
+                                        @php
+                                            $statusColor = match($ride['ride_status']) {
+                                                'requested' => 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200',
+                                                'accepted' => 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
+                                                'in_progress' => 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300',
+                                                'completed' => 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300',
+                                                'canceled' => 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300',
+                                                default => 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200'
+                                            };
+                                        @endphp
+                                        <span class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium {{ $statusColor }}">
+                                            {{ $statusOptions[$ride['ride_status']] ?? $ride['ride_status'] }}
+                                        </span>
                                     </td>
                                     @php
                                         $costTooltip = $ride['cost'] !== null ? 'Coût : ' . number_format($ride['cost'], 0, ',', ' ') . ' CDF' : '—';
@@ -86,19 +90,10 @@
                                         x-tooltip="{ content: @js($costTooltip), theme: $store?.theme ?? 'light' }"
                                         title="{{ $costTooltip }}"
                                     >{{ $ride['cost'] !== null ? number_format($ride['cost'], 0, ',', ' ') . ' CDF' : '—' }}</td>
-                                    <td class="px-4 py-2 min-w-[140px] flex items-center gap-2">
+                                    <td class="px-4 py-2 min-w-[90px]">
                                         <a href="{{ url('/admin/rides/' . $ride['id']) }}" class="text-primary-600 hover:underline dark:text-primary-400">
                                             Voir
                                         </a>
-                                        <span class="text-gray-400">|</span>
-                                        <button
-                                            type="button"
-                                            wire:click="deleteRide({{ $ride['id'] }})"
-                                            wire:confirm="Êtes-vous sûr de vouloir supprimer cette course ?"
-                                            class="text-danger-600 hover:underline dark:text-danger-400"
-                                        >
-                                            Supprimer
-                                        </button>
                                     </td>
                                 </tr>
                             @endforeach
@@ -147,13 +142,31 @@
                         if (!el) return;
                         try {
                             var L = window.L;
-                            var map = L.map(mapId).setView([config.defaultLat || -4.44, config.defaultLng || 15.27], 13);
+                            var map = L.map(mapId).setView([config.defaultLat || -4.325, config.defaultLng || 15.322], 12);
                             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap' }).addTo(map);
                             var allBounds = [];
                             var greenIcon = L.divIcon({ className: 'rides-marker-depart', html: '<span style="background:#22c55e;color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:bold;">D</span>', iconSize: [22, 22], iconAnchor: [11, 11] });
                             var redIcon = L.divIcon({ className: 'rides-marker-arrivee', html: '<span style="background:#ef4444;color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:bold;">A</span>', iconSize: [22, 22], iconAnchor: [11, 11] });
                             var carSvg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#eab308" width="28" height="28"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.22.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/></svg>';
                             var carIcon = L.divIcon({ className: 'rides-marker-car', html: carSvg, iconSize: [28, 28], iconAnchor: [14, 14] });
+
+                            function drawRoute(startLat, startLng, endLat, endLng) {
+                                var osrmUrl = 'https://router.project-osrm.org/route/v1/driving/' + startLng + ',' + startLat + ';' + endLng + ',' + endLat + '?overview=full&geometries=geojson';
+                                fetch(osrmUrl)
+                                    .then(function(r) { return r.json(); })
+                                    .then(function(data) {
+                                        var route = data && data.routes && data.routes[0] ? data.routes[0] : null;
+                                        if (!route || !route.geometry || !route.geometry.coordinates) {
+                                            L.polyline([[startLat, startLng], [endLat, endLng]], { color: '#2563eb', weight: 3, opacity: 0.7 }).addTo(map);
+                                            return;
+                                        }
+                                        var points = route.geometry.coordinates.map(function(c) { return [c[1], c[0]]; });
+                                        L.polyline(points, { color: '#2563eb', weight: 4, opacity: 0.85 }).addTo(map);
+                                    })
+                                    .catch(function() {
+                                        L.polyline([[startLat, startLng], [endLat, endLng]], { color: '#2563eb', weight: 3, opacity: 0.7 }).addTo(map);
+                                    });
+                            }
 
                             function addRidePoints(ride, startLat, startLng, endLat, endLng) {
                                 var label = 'Course #' + ride.id;
@@ -166,7 +179,7 @@
                                     allBounds.push([endLat, endLng]);
                                 }
                                 if (startLat != null && startLng != null && endLat != null && endLng != null) {
-                                    L.polyline([[startLat, startLng], [endLat, endLng]], { color: '#3b82f6', weight: 3, opacity: 0.7 }).addTo(map);
+                                    drawRoute(startLat, startLng, endLat, endLng);
                                     var midLat = (startLat + endLat) / 2, midLng = (startLng + endLng) / 2;
                                     L.marker([midLat, midLng], { icon: carIcon }).addTo(map).bindPopup('<strong>Voiture</strong> – ' + label);
                                     allBounds.push([midLat, midLng]);
@@ -201,7 +214,7 @@
                                                     L.marker([lat, lng], { icon: redIcon }).addTo(map).bindPopup('<strong>Arrivée</strong> – ' + label);
                                                     allBounds.push([lat, lng]);
                                                     if (ride._startLat != null && ride._startLng != null) {
-                                                        L.polyline([[ride._startLat, ride._startLng], [lat, lng]], { color: '#3b82f6', weight: 3, opacity: 0.7 }).addTo(map);
+                                                        drawRoute(ride._startLat, ride._startLng, lat, lng);
                                                         var midLat = (ride._startLat + lat) / 2, midLng = (ride._startLng + lng) / 2;
                                                         L.marker([midLat, midLng], { icon: carIcon }).addTo(map).bindPopup('<strong>Voiture</strong> – ' + label);
                                                         allBounds.push([midLat, midLng]);

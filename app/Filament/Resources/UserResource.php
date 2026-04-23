@@ -14,6 +14,7 @@ use Filament\Infolists\Infolist;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Hash;
 
 class UserResource extends Resource
@@ -29,6 +30,21 @@ class UserResource extends Resource
     protected static ?string $pluralModelLabel = 'Utilisateurs';
 
     protected static ?string $navigationGroup = 'Gestion';
+
+    public static function getNavigationBadge(): ?string
+    {
+        return (string) static::getModel()::query()->count();
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'success';
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()->with(['latestKycVerification']);
+    }
 
     public static function infolist(Infolist $infolist): Infolist
     {
@@ -79,6 +95,31 @@ class UserResource extends Resource
                         TextEntry::make('loyalty_point')->label('Points fidélité')->numeric(),
                     ])
                     ->columns(2),
+                Section::make('KYC (Smile ID)')
+                    ->schema([
+                        TextEntry::make('kyc_verified')
+                            ->label('Compte marqué vérifié')
+                            ->formatStateUsing(fn ($state): string => $state ? 'Oui' : 'Non')
+                            ->badge()
+                            ->color(fn ($state) => $state ? 'success' : 'warning'),
+                        TextEntry::make('kyc_verified_at')->label('Date vérification compte')->dateTime('d/m/Y H:i'),
+                        TextEntry::make('latestKycVerification.status')
+                            ->label('Dernier statut job')
+                            ->badge()
+                            ->color(fn (?string $state): string => match ($state) {
+                                'approved' => 'success',
+                                'rejected' => 'danger',
+                                'under_review' => 'warning',
+                                'pending' => 'gray',
+                                default => 'info',
+                            })
+                            ->default('—'),
+                        TextEntry::make('latestKycVerification.job_id')->label('Dernier job ID')->default('—'),
+                        TextEntry::make('latestKycVerification.document_type')->label('Type document')->default('—'),
+                        TextEntry::make('latestKycVerification.verified_at')->label('Dernier résultat reçu le')->dateTime('d/m/Y H:i')->default('—'),
+                    ])
+                    ->columns(2)
+                    ->collapsed(),
                 Section::make('Véhicule(s)')
                     ->description('Véhicules possédés par l\'utilisateur')
                     ->schema([
@@ -259,8 +300,21 @@ class UserResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('id')->label('ID')->sortable(),
-                Tables\Columns\TextColumn::make('firstname')->label('Prénom')->searchable(),
-                Tables\Columns\TextColumn::make('lastname')->label('Nom')->searchable(),
+                Tables\Columns\ViewColumn::make('avatar')
+                    ->label('')
+                    ->state(fn (User $record): User => $record)
+                    ->view('filament.tables.columns.owner-with-avatar')
+                    ->sortable(false),
+                Tables\Columns\TextColumn::make('full_name')
+                    ->label('Utilisateur')
+                    ->state(fn (User $record): string => $record->getFilamentName())
+                    ->searchable(query: function (Builder $query, string $search): Builder {
+                        return $query
+                            ->where('firstname', 'like', "%{$search}%")
+                            ->orWhere('lastname', 'like', "%{$search}%")
+                            ->orWhere('email', 'like', "%{$search}%")
+                            ->orWhere('phone', 'like', "%{$search}%");
+                    }),
                 Tables\Columns\TextColumn::make('email')->searchable()->sortable(),
                 Tables\Columns\TextColumn::make('phone')->searchable(),
                 Tables\Columns\TextColumn::make('role.role_name')->label('Rôle app')->badge(),
@@ -268,6 +322,18 @@ class UserResource extends Resource
                     ->label('Rôles Shield')
                     ->badge(),
                 Tables\Columns\TextColumn::make('wallet_balance')->label('Solde')->numeric(decimalPlaces: 2),
+                Tables\Columns\IconColumn::make('kyc_verified')->label('KYC')->boolean()->toggleable(),
+                Tables\Columns\TextColumn::make('latestKycVerification.status')
+                    ->label('Statut KYC')
+                    ->badge()
+                    ->color(fn (?string $state): string => match ($state) {
+                        'approved' => 'success',
+                        'rejected' => 'danger',
+                        'under_review' => 'warning',
+                        'pending' => 'gray',
+                        default => 'info',
+                    })
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('created_at')->label('Créé le')->dateTime('d/m/Y')->sortable(),
             ])
             ->filters([

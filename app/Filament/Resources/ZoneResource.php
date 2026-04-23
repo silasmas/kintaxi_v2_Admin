@@ -6,8 +6,9 @@ use App\Filament\Resources\ZoneResource\Pages;
 use App\Models\Zone;
 use Filament\Forms;
 use Filament\Forms\Form;
-use Filament\Infolists\Infolist;
 use Filament\Infolists\Components\TextEntry;
+use Filament\Infolists\Components\ViewEntry;
+use Filament\Infolists\Infolist;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -25,6 +26,16 @@ class ZoneResource extends Resource
     protected static ?string $pluralModelLabel = 'Zones';
 
     protected static ?string $navigationGroup = 'Référentiels';
+
+    public static function getNavigationBadge(): ?string
+    {
+        return (string) static::getModel()::query()->count();
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'info';
+    }
 
     public static function infolist(Infolist $infolist): Infolist
     {
@@ -44,6 +55,10 @@ class ZoneResource extends Resource
                     ->formatStateUsing(fn (?bool $state): string => $state ? 'Oui' : 'Non')
                     ->badge()
                     ->color(fn (?bool $state): string => $state ? 'success' : 'danger'),
+                ViewEntry::make('zone_map')
+                    ->label('Carte de la zone')
+                    ->view('filament.infolists.entries.zone-map')
+                    ->columnSpanFull(),
             ])->columns(2);
     }
 
@@ -83,6 +98,8 @@ class ZoneResource extends Resource
                     Forms\Components\Toggle::make('is_active')
                         ->label('Active')
                         ->default(true),
+                    Forms\Components\View::make('filament.forms.components.zone-map-preview')
+                        ->columnSpanFull(),
                 ])->columns(2),
             ]);
     }

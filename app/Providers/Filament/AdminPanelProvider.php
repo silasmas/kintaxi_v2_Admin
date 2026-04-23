@@ -3,13 +3,14 @@
 namespace App\Providers\Filament;
 
 use BezhanSalleh\FilamentShield\FilamentShieldPlugin;
+use Devonab\FilamentEasyFooter\EasyFooterPlugin;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
-use Filament\Pages;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
+use Filament\View\PanelsRenderHook;
 use Filament\Widgets;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
@@ -40,7 +41,28 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->plugins([
                 FilamentShieldPlugin::make(),
+                EasyFooterPlugin::make()
+                    ->footerEnabled()
+                    ->withFooterPosition('footer')
+                    ->withSentence('KinTaxi Admin - Plateforme de supervision')
+                    ->withLoadTime('Page chargée en')
+                    ->withBorder()
+                    ->withLogo(
+                        asset('assets/img/logo-text.png'),
+                        url('/admin'),
+                        'Propulsé par',
+                        22,
+                    )
+                    ->withLinks([
+                        ['title' => 'Support', 'url' => 'mailto:support@kintaxi.com'],
+                        ['title' => 'Documentation', 'url' => 'https://docs.usesmileid.com/'],
+                        ['title' => 'Statut système', 'url' => '/up'],
+                    ]),
             ])
+            ->renderHook(
+                PanelsRenderHook::TOPBAR_END,
+                fn (): string => view('filament.partials.shepherd-tour')->render(),
+            )
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
             ->pages([

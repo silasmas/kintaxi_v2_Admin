@@ -29,9 +29,11 @@
                 {{ $initials }}
             </div>
         </div>
-        <span class="text-sm text-gray-950 dark:text-white">
+        {{-- <span class="text-sm text-gray-950 dark:text-white">
             {{ $ownerName }}
-        </span>
+        </span> --}}
+        <!-- Raccourci : tapez simplement $ownerName pour afficher le nom du propriétaire -->
+   
     </div>
 @else
     <span class="text-gray-400">—</span>

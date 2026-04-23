@@ -6,8 +6,6 @@ use App\Filament\Resources\DocumentResource\Pages;
 use App\Models\Document;
 use Filament\Forms;
 use Filament\Forms\Form;
-use Filament\Infolists\Infolist;
-use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -26,52 +24,62 @@ class DocumentResource extends Resource
 
     protected static ?string $navigationGroup = 'Documents';
 
+    public static function getNavigationBadge(): ?string
+    {
+        return (string) static::getModel()::query()->count();
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'danger';
+    }
+
     public static function form(Form $form): Form
     {
         return $form
             ->schema([
                 Forms\Components\Section::make('Document')->schema([
-                Forms\Components\Select::make('status_id')
-                    ->label('Statut')
-                    ->relationship('status', 'status_name')
-                    ->getOptionLabelFromRecordUsing(fn ($record) => \App\Models\Status::formatShort($record->status_name ?? null))
-                    ->required()
-                    ->searchable()
-                    ->preload(),
-                Forms\Components\Select::make('user_id')
-                    ->label('Propriétaire')
-                    ->relationship('user', 'email')
-                    ->getOptionLabelFromRecordUsing(fn ($record) => (string) ($record->email ?? $record->phone ?? $record->id ?? '—'))
-                    ->searchable()
-                    ->preload(),
-                Forms\Components\Select::make('type')
-                    ->label('Type')
-                    ->options([
-                        'id_card' => 'Carte d\'identité',
-                        'driving_license' => 'Permis de conduire',
-                        'vehicle_registration' => 'Carte grise',
-                        'vehicle_insurance' => 'Assurance véhicule',
-                    ])
-                    ->required(),
-                Forms\Components\TextInput::make('file_url')
-                    ->label('URL du fichier')
-                    ->url()
-                    ->required()
-                    ->maxLength(1000),
-                Forms\Components\Select::make('vehicle_id')
-                    ->label('Véhicule')
-                    ->relationship('vehicle', 'registration_number')
-                    ->getOptionLabelFromRecordUsing(fn ($record) => (string) ($record->registration_number ?? $record->id ?? '—'))
-                    ->searchable()
-                    ->preload(),
-                Forms\Components\Toggle::make('verified')->label('Vérifié')->default(0),
-                Forms\Components\DateTimePicker::make('verified_at')->label('Date vérification'),
-                Forms\Components\Select::make('verified_by')
-                    ->label('Vérifié par')
-                    ->relationship('verifier', 'email')
-                    ->getOptionLabelFromRecordUsing(fn ($record) => (string) ($record->email ?? $record->id ?? '—'))
-                    ->searchable()
-                    ->preload(),
+                    Forms\Components\Select::make('status_id')
+                        ->label('Statut')
+                        ->relationship('status', 'status_name')
+                        ->getOptionLabelFromRecordUsing(fn ($record) => \App\Models\Status::formatShort($record->status_name ?? null))
+                        ->required()
+                        ->searchable()
+                        ->preload(),
+                    Forms\Components\Select::make('user_id')
+                        ->label('Propriétaire')
+                        ->relationship('user', 'email')
+                        ->getOptionLabelFromRecordUsing(fn ($record) => (string) ($record->email ?? $record->phone ?? $record->id ?? '—'))
+                        ->searchable()
+                        ->preload(),
+                    Forms\Components\Select::make('type')
+                        ->label('Type')
+                        ->options([
+                            'id_card' => 'Carte d\'identité',
+                            'driving_license' => 'Permis de conduire',
+                            'vehicle_registration' => 'Carte grise',
+                            'vehicle_insurance' => 'Assurance véhicule',
+                        ])
+                        ->required(),
+                    Forms\Components\TextInput::make('file_url')
+                        ->label('URL du fichier')
+                        ->url()
+                        ->required()
+                        ->maxLength(1000),
+                    Forms\Components\Select::make('vehicle_id')
+                        ->label('Véhicule')
+                        ->relationship('vehicle', 'registration_number')
+                        ->getOptionLabelFromRecordUsing(fn ($record) => (string) ($record->registration_number ?? $record->id ?? '—'))
+                        ->searchable()
+                        ->preload(),
+                    Forms\Components\Toggle::make('verified')->label('Vérifié')->default(0),
+                    Forms\Components\DateTimePicker::make('verified_at')->label('Date vérification'),
+                    Forms\Components\Select::make('verified_by')
+                        ->label('Vérifié par')
+                        ->relationship('verifier', 'email')
+                        ->getOptionLabelFromRecordUsing(fn ($record) => (string) ($record->email ?? $record->id ?? '—'))
+                        ->searchable()
+                        ->preload(),
                 ])->columns(2),
             ]);
     }

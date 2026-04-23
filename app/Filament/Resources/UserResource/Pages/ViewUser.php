@@ -18,7 +18,7 @@ class ViewUser extends ViewRecord
         ];
     }
 
-    public function mount(int | string $record): void
+    public function mount(int|string $record): void
     {
         parent::mount($record);
 
@@ -30,6 +30,7 @@ class ViewUser extends ViewRecord
             'status',
             'role',
             'roles',
+            'latestKycVerification',
         ]);
     }
 }

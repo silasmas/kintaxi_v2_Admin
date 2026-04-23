@@ -6,8 +6,10 @@ use App\Filament\Resources\RideResource\Pages;
 use App\Models\Ride;
 use Filament\Forms;
 use Filament\Forms\Form;
-use Filament\Infolists\Infolist;
+use Filament\Infolists\Components\Section;
 use Filament\Infolists\Components\TextEntry;
+use Filament\Infolists\Components\ViewEntry;
+use Filament\Infolists\Infolist;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -26,65 +28,98 @@ class RideResource extends Resource
 
     protected static ?string $navigationGroup = 'Courses';
 
+    public static function getNavigationBadge(): ?string
+    {
+        return (string) static::getModel()::query()->count();
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'info';
+    }
+
+    public static function infolist(Infolist $infolist): Infolist
+    {
+        return $infolist->schema([
+            Section::make('Informations course')
+                ->schema([
+                    TextEntry::make('ride_status')->label('Statut')->badge(),
+                    TextEntry::make('passenger.firstname')->label('Passager'),
+                    TextEntry::make('driver.firstname')->label('Chauffeur'),
+                    TextEntry::make('distance')->label('Distance')->suffix(' km'),
+                    TextEntry::make('cost')->label('Coût')->money('CDF'),
+                    TextEntry::make('payment_method')->label('Paiement'),
+                    TextEntry::make('created_at')->label('Date')->dateTime('d/m/Y H:i'),
+                ])->columns(2),
+            Section::make('Trajet sur carte')
+                ->schema([
+                    ViewEntry::make('ride_map')
+                        ->label('')
+                        ->view('filament.infolists.entries.ride-route-map')
+                        ->columnSpanFull(),
+                ]),
+        ]);
+    }
+
     public static function form(Form $form): Form
     {
         return $form
             ->schema([
                 Forms\Components\Section::make('Course')->schema([
-                Forms\Components\Select::make('ride_status')
-                    ->label('Statut')
-                    ->options([
-                        'requested' => 'Demandée',
-                        'accepted' => 'Acceptée',
-                        'in_progress' => 'En cours',
-                        'completed' => 'Terminée',
-                        'canceled' => 'Annulée',
-                    ])
-                    ->required(),
-                Forms\Components\Select::make('vehicle_category_id')
-                    ->label('Catégorie véhicule')
-                    ->relationship('vehicleCategory', 'category_name')
-                    ->getOptionLabelFromRecordUsing(fn ($record) => (string) ($record->category_name ?? $record->id ?? '—'))
-                    ->searchable()
-                    ->preload(),
-                Forms\Components\Select::make('vehicle_id')
-                    ->label('Véhicule')
-                    ->relationship('vehicle', 'registration_number')
-                    ->getOptionLabelFromRecordUsing(fn ($record) => (string) ($record->registration_number ?? $record->id ?? '—'))
-                    ->searchable()
-                    ->preload(),
-                Forms\Components\Select::make('passenger_id')
-                    ->label('Passager')
-                    ->relationship('passenger', 'email')
-                    ->getOptionLabelFromRecordUsing(fn ($record) => (string) ($record->email ?? $record->phone ?? $record->id ?? '—'))
-                    ->required()
-                    ->searchable()
-                    ->preload(),
-                Forms\Components\Select::make('driver_id')
-                    ->label('Chauffeur')
-                    ->relationship('driver', 'email')
-                    ->getOptionLabelFromRecordUsing(fn ($record) => (string) ($record->email ?? $record->phone ?? $record->id ?? '—'))
-                    ->searchable()
-                    ->preload(),
-                Forms\Components\TextInput::make('distance')->label('Distance (km)')->required()->numeric()->step(0.01),
-                Forms\Components\TextInput::make('cost')->label('Coût')->numeric()->step(0.01),
-                Forms\Components\TextInput::make('estimated_cost')->label('Coût estimé')->numeric()->step(0.01),
-                Forms\Components\Select::make('payment_method')
-                    ->label('Méthode de paiement')
-                    ->options([
-                        'cash' => 'Espèces',
-                        'kintaxi-wallet' => 'Portefeuille Kintaxi',
-                        'mobile-money' => 'Mobile Money',
-                        'card' => 'Carte',
-                    ])
-                    ->required(),
-                Forms\Components\Toggle::make('paid')->label('Payé'),
-                Forms\Components\TextInput::make('commission')->label('Commission (%)')->numeric()->default(15)->step(0.01),
-                Forms\Components\Toggle::make('is_scheduled')->label('Planifiée'),
-                Forms\Components\DateTimePicker::make('scheduled_time')->label('Date/heure planifiée'),
-                Forms\Components\Select::make('canceled_by')
-                    ->label('Annulée par')
-                    ->options(['passenger' => 'Passager', 'driver' => 'Chauffeur']),
+                    Forms\Components\Select::make('ride_status')
+                        ->label('Statut')
+                        ->options([
+                            'requested' => 'Demandée',
+                            'accepted' => 'Acceptée',
+                            'in_progress' => 'En cours',
+                            'completed' => 'Terminée',
+                            'canceled' => 'Annulée',
+                        ])
+                        ->required(),
+                    Forms\Components\Select::make('vehicle_category_id')
+                        ->label('Catégorie véhicule')
+                        ->relationship('vehicleCategory', 'category_name')
+                        ->getOptionLabelFromRecordUsing(fn ($record) => (string) ($record->category_name ?? $record->id ?? '—'))
+                        ->searchable()
+                        ->preload(),
+                    Forms\Components\Select::make('vehicle_id')
+                        ->label('Véhicule')
+                        ->relationship('vehicle', 'registration_number')
+                        ->getOptionLabelFromRecordUsing(fn ($record) => (string) ($record->registration_number ?? $record->id ?? '—'))
+                        ->searchable()
+                        ->preload(),
+                    Forms\Components\Select::make('passenger_id')
+                        ->label('Passager')
+                        ->relationship('passenger', 'email')
+                        ->getOptionLabelFromRecordUsing(fn ($record) => (string) ($record->email ?? $record->phone ?? $record->id ?? '—'))
+                        ->required()
+                        ->searchable()
+                        ->preload(),
+                    Forms\Components\Select::make('driver_id')
+                        ->label('Chauffeur')
+                        ->relationship('driver', 'email')
+                        ->getOptionLabelFromRecordUsing(fn ($record) => (string) ($record->email ?? $record->phone ?? $record->id ?? '—'))
+                        ->searchable()
+                        ->preload(),
+                    Forms\Components\TextInput::make('distance')->label('Distance (km)')->required()->numeric()->step(0.01),
+                    Forms\Components\TextInput::make('cost')->label('Coût')->numeric()->step(0.01),
+                    Forms\Components\TextInput::make('estimated_cost')->label('Coût estimé')->numeric()->step(0.01),
+                    Forms\Components\Select::make('payment_method')
+                        ->label('Méthode de paiement')
+                        ->options([
+                            'cash' => 'Espèces',
+                            'kintaxi-wallet' => 'Portefeuille Kintaxi',
+                            'mobile-money' => 'Mobile Money',
+                            'card' => 'Carte',
+                        ])
+                        ->required(),
+                    Forms\Components\Toggle::make('paid')->label('Payé'),
+                    Forms\Components\TextInput::make('commission')->label('Commission (%)')->numeric()->default(15)->step(0.01),
+                    Forms\Components\Toggle::make('is_scheduled')->label('Planifiée'),
+                    Forms\Components\DateTimePicker::make('scheduled_time')->label('Date/heure planifiée'),
+                    Forms\Components\Select::make('canceled_by')
+                        ->label('Annulée par')
+                        ->options(['passenger' => 'Passager', 'driver' => 'Chauffeur']),
                 ])->columns(2),
             ]);
     }
