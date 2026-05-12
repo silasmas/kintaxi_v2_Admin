@@ -1,21 +1,21 @@
 <x-filament-panels::page>
     <div class="space-y-4">
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+        <div class="grid grid-cols-1 gap-3 md:grid-cols-4">
             <div>
                 <label for="live-ride-status" class="text-sm font-medium text-gray-700 dark:text-gray-200">Statut</label>
-                <select id="live-ride-status" class="mt-1 fi-input block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800">
-                    <option value="active">Actives (acceptée + en cours)</option>
-                    <option value="requested">Demandées</option>
-                    <option value="accepted">Acceptées</option>
+                <select id="live-ride-status" class="fi-input mt-1 block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800">
+                    <option value="active">Actives</option>
+                    <option value="requested">Demandees</option>
+                    <option value="accepted">Acceptees</option>
                     <option value="in_progress">En cours</option>
-                    <option value="completed">Terminées</option>
-                    <option value="canceled">Annulées</option>
+                    <option value="completed">Terminees</option>
+                    <option value="canceled">Annulees</option>
                 </select>
             </div>
             <div>
                 <label for="live-ride-search" class="text-sm font-medium text-gray-700 dark:text-gray-200">Recherche</label>
                 <input id="live-ride-search" type="text" placeholder="ID course ou statut"
-                    class="mt-1 fi-input block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800" />
+                    class="fi-input mt-1 block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800" />
             </div>
             <div class="flex items-end">
                 <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
@@ -26,27 +26,27 @@
             <div class="flex items-end">
                 <button id="live-ride-refresh" type="button"
                     class="fi-btn fi-btn-size-md inline-flex items-center justify-center rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-500">
-                    Rafraîchir maintenant
+                    Rafraichir maintenant
                 </button>
             </div>
         </div>
 
-        <div class="rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700" wire:ignore>
-            <div id="live-ride-map" class="w-full bg-gray-100 dark:bg-gray-800" style="height: 520px;"></div>
+        <div class="kintaxi-map" wire:ignore>
+            <div id="live-ride-map" class="w-full" style="height: 540px;"></div>
         </div>
         <p class="text-sm text-gray-500 dark:text-gray-400">
-            Cette carte se met à jour automatiquement toutes les 10 secondes. Les points chauffeur gardent un historique (trace) pendant la session.
+            La carte se met a jour toutes les 10 secondes. Les pins D, A et C indiquent depart, arrivee et chauffeur.
         </p>
     </div>
 
+    @include('filament.maps.assets')
+
     @once
         @push('styles')
-            <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="anonymous" />
             <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
             <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
         @endpush
         @push('scripts')
-            <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="anonymous"></script>
             <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
         @endpush
     @endonce
@@ -62,11 +62,12 @@
                 let autoFitEnabled = true;
 
                 const initMap = (lat, lng) => {
-                    if (!window.L || map) return;
-                    map = L.map('live-ride-map').setView([lat, lng], 12);
-                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                        attribution: '&copy; OpenStreetMap'
-                    }).addTo(map);
+                    if (!window.L || !window.KinTaxiMapKit || map) return;
+
+                    const kit = window.KinTaxiMapKit;
+                    map = kit.createMap('live-ride-map', [lat, lng], 12);
+                    if (!map) return;
+
                     layerGroup = L.layerGroup().addTo(map);
                     markerCluster = L.markerClusterGroup({
                         maxClusterRadius: 55,
@@ -76,10 +77,17 @@
                     map.addLayer(markerCluster);
                 };
 
+                const addClusterPin = (point, options) => {
+                    options.addToMap = false;
+                    const marker = window.KinTaxiMapKit.addPin(map, point, options);
+                    if (marker) markerCluster.addLayer(marker);
+                };
+
                 const renderRides = (payload) => {
                     initMap(payload.default_lat ?? -4.325, payload.default_lng ?? 15.322);
                     if (!map || !layerGroup || !markerCluster) return;
 
+                    const kit = window.KinTaxiMapKit;
                     layerGroup.clearLayers();
                     markerCluster.clearLayers();
                     const bounds = [];
@@ -90,32 +98,36 @@
                         const driver = (ride.driver_lat != null && ride.driver_lng != null) ? [ride.driver_lat, ride.driver_lng] : null;
 
                         if (start) {
-                            markerCluster.addLayer(
-                                L.circleMarker(start, { radius: 6, color: '#16a34a' })
-                                    .bindPopup('Départ - Course #' + ride.id)
-                            );
+                            addClusterPin(start, {
+                                label: 'D',
+                                color: kit.colors.start,
+                                popup: 'Depart - Course #' + ride.id,
+                            });
                             bounds.push(start);
                         }
 
                         if (end) {
-                            markerCluster.addLayer(
-                                L.circleMarker(end, { radius: 6, color: '#dc2626' })
-                                    .bindPopup('Arrivée - Course #' + ride.id)
-                            );
+                            addClusterPin(end, {
+                                label: 'A',
+                                color: kit.colors.end,
+                                popup: 'Arrivee - Course #' + ride.id,
+                            });
                             bounds.push(end);
                         }
 
                         if (start && end) {
-                            L.polyline([start, end], { color: '#2563eb', weight: 4, opacity: 0.85 })
-                                .bindPopup('Trajet estimé - Course #' + ride.id)
-                                .addTo(layerGroup);
+                            kit.drawRoute(map, start, end, {
+                                layer: layerGroup,
+                                popup: 'Trajet estime - Course #' + ride.id,
+                            });
                         }
 
                         if (driver) {
-                            markerCluster.addLayer(
-                                L.marker(driver)
-                                    .bindPopup('Position chauffeur - Course #' + ride.id + ' (' + ride.ride_status + ')')
-                            );
+                            addClusterPin(driver, {
+                                label: 'C',
+                                color: kit.colors.driver,
+                                popup: 'Position chauffeur - Course #' + ride.id + ' (' + ride.ride_status + ')',
+                            });
                             bounds.push(driver);
 
                             const key = String(ride.id);
@@ -124,9 +136,7 @@
                             const hasChanged = !last || last[0] !== driver[0] || last[1] !== driver[1];
                             if (hasChanged) {
                                 trail.push(driver);
-                                if (trail.length > maxTrailPoints) {
-                                    trail.shift();
-                                }
+                                if (trail.length > maxTrailPoints) trail.shift();
                                 rideTrails[key] = trail;
                             }
 
@@ -143,10 +153,8 @@
                         }
                     });
 
-                    if (autoFitEnabled && bounds.length > 1) {
-                        map.fitBounds(bounds, { padding: [30, 30], maxZoom: 15 });
-                    } else if (autoFitEnabled && bounds.length === 1) {
-                        map.setView(bounds[0], 14);
+                    if (autoFitEnabled) {
+                        kit.fit(map, bounds, { padding: [30, 30], maxZoom: 15, singleZoom: 14 });
                     }
                 };
 
@@ -160,23 +168,26 @@
                     }
 
                     fetch(@js(route('admin.live-ride-tracking.feed')) + '?' + params.toString())
-                        .then((r) => r.json())
+                        .then((response) => response.json())
                         .then((payload) => renderRides(payload))
                         .catch(() => {});
                 };
 
                 const boot = () => {
-                    if (!window.L) return setTimeout(boot, 150);
+                    if (!window.L || !window.KinTaxiMapKit || !window.L.markerClusterGroup) {
+                        return setTimeout(boot, 150);
+                    }
+
                     document.getElementById('live-ride-refresh')?.addEventListener('click', refresh);
                     document.getElementById('live-ride-status')?.addEventListener('change', refresh);
-                    document.getElementById('live-ride-search')?.addEventListener('keydown', (e) => {
-                        if (e.key === 'Enter') {
-                            e.preventDefault();
+                    document.getElementById('live-ride-search')?.addEventListener('keydown', (event) => {
+                        if (event.key === 'Enter') {
+                            event.preventDefault();
                             refresh();
                         }
                     });
-                    document.getElementById('live-ride-auto-fit')?.addEventListener('change', (e) => {
-                        autoFitEnabled = !!e.target.checked;
+                    document.getElementById('live-ride-auto-fit')?.addEventListener('change', (event) => {
+                        autoFitEnabled = !!event.target.checked;
                     });
                     refresh();
                     setInterval(refresh, 10000);

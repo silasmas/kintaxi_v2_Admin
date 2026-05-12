@@ -28,23 +28,18 @@
 @endphp
 
 <div class="space-y-3">
-    <div id="{{ $mapId }}" class="w-full rounded-lg border border-gray-200 dark:border-gray-700" style="height: 360px;"></div>
+    <div class="kintaxi-map" wire:ignore>
+        <div id="{{ $mapId }}" class="w-full" style="height: 380px;"></div>
+    </div>
 
     @if (! $start || ! $end)
         <p class="text-sm text-warning-600 dark:text-warning-400">
-            Coordonnées incomplètes : le tracé complet du trajet ne peut pas être dessiné.
+            Coordonnees incompletes : le trace complet du trajet ne peut pas etre dessine.
         </p>
     @endif
 </div>
 
-@once
-    @push('styles')
-        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="anonymous" />
-    @endpush
-    @push('scripts')
-        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="anonymous"></script>
-    @endpush
-@endonce
+@include('filament.maps.assets')
 
 @push('scripts')
     <script>
@@ -54,46 +49,46 @@
             const end = @js($end);
 
             const init = () => {
-                if (!window.L) {
+                if (!window.L || !window.KinTaxiMapKit) {
                     setTimeout(init, 150);
                     return;
                 }
 
                 const el = document.getElementById(mapId);
                 if (!el || el.dataset.inited === '1') return;
-                el.dataset.inited = '1';
 
-                const L = window.L;
-                const center = start ?? end ?? [-4.4419, 15.2663];
-                const map = L.map(mapId).setView(center, 13);
-
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    attribution: '&copy; OpenStreetMap'
-                }).addTo(map);
+                const kit = window.KinTaxiMapKit;
+                const center = start ?? end ?? kit.defaultCenter;
+                const map = kit.createMap(mapId, center, 13);
+                if (!map) return;
 
                 const bounds = [];
 
                 if (start) {
-                    L.marker(start).addTo(map).bindPopup('Départ');
+                    kit.addPin(map, start, {
+                        label: 'D',
+                        color: kit.colors.start,
+                        popup: 'Depart',
+                    });
                     bounds.push(start);
                 }
 
                 if (end) {
-                    L.marker(end).addTo(map).bindPopup('Arrivée');
+                    kit.addPin(map, end, {
+                        label: 'A',
+                        color: kit.colors.end,
+                        popup: 'Arrivee',
+                    });
                     bounds.push(end);
                 }
 
                 if (start && end) {
-                    L.polyline([start, end], {
-                        color: '#2563eb',
-                        weight: 4,
-                        opacity: 0.8
-                    }).addTo(map).bindPopup('Trajet estimé');
+                    kit.drawRoute(map, start, end, {
+                        popup: 'Trajet estime',
+                    });
                 }
 
-                if (bounds.length > 1) {
-                    map.fitBounds(bounds, { padding: [30, 30], maxZoom: 15 });
-                }
+                kit.fit(map, bounds, { padding: [30, 30], maxZoom: 15 });
             };
 
             init();

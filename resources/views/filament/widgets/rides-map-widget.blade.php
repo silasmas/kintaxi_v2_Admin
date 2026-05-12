@@ -1,10 +1,3 @@
-@push('styles')
-<style>
-    /* Carte qui passe sous la barre de menu au scroll (Leaflet utilise z-index ~400) */
-    .fi-topbar { z-index: 1000 !important; }
-</style>
-@endpush
-
 <x-filament-widgets::widget>
     <x-filament::section>
         <x-slot name="heading">
@@ -24,10 +17,10 @@
 
         <div class="space-y-4">
             {{-- Conteneur carte : hauteur forcée en inline pour garantir l'affichage --}}
-            <div class="rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700" wire:ignore>
+            <div class="kintaxi-map" wire:ignore>
                 <div id="{{ $mapId }}"
-                     class="w-full bg-gray-100 dark:bg-gray-800"
-                     style="width:100%;height:400px;min-height:400px;"></div>
+                     class="w-full"
+                     style="width:100%;height:430px;min-height:430px;"></div>
             </div>
             <script type="application/json" id="{{ $configId }}">@json($mapConfig)</script>
 
@@ -105,10 +98,7 @@
             @endif
         </div>
 
-        @assets
-        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="anonymous" />
-        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="anonymous"></script>
-        @endassets
+        @include('filament.maps.assets')
 
         @script
         <script>
@@ -134,7 +124,7 @@
                     }
 
                     function run() {
-                        if (!window.L) {
+                        if (!window.L || !window.KinTaxiMapKit) {
                             setTimeout(run, 150);
                             return;
                         }
@@ -142,30 +132,26 @@
                         if (!el) return;
                         try {
                             var L = window.L;
-                            var map = L.map(mapId).setView([config.defaultLat || -4.325, config.defaultLng || 15.322], 12);
-                            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap' }).addTo(map);
+                            var kit = window.KinTaxiMapKit;
+                            var map = kit.createMap(mapId, [config.defaultLat || -4.325, config.defaultLng || 15.322], 12);
+                            if (!map) return;
                             var allBounds = [];
-                            var greenIcon = L.divIcon({ className: 'rides-marker-depart', html: '<span style="background:#22c55e;color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:bold;">D</span>', iconSize: [22, 22], iconAnchor: [11, 11] });
-                            var redIcon = L.divIcon({ className: 'rides-marker-arrivee', html: '<span style="background:#ef4444;color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:bold;">A</span>', iconSize: [22, 22], iconAnchor: [11, 11] });
+                            kit.addSearch(map, function(result) {
+                                var point = [result[0], result[1]];
+                                kit.addPin(map, point, {
+                                    label: 'S',
+                                    color: kit.colors.neutral,
+                                    popup: result[2] || 'Recherche',
+                                }).openPopup();
+                                map.setView(point, 15);
+                            });
+                            var greenIcon = L.divIcon({ className: 'rides-marker-depart', html: '<span class="kintaxi-map-pin" style="background:' + kit.colors.start + '">D</span>', iconSize: [28, 28], iconAnchor: [14, 14] });
+                            var redIcon = L.divIcon({ className: 'rides-marker-arrivee', html: '<span class="kintaxi-map-pin" style="background:' + kit.colors.end + '">A</span>', iconSize: [28, 28], iconAnchor: [14, 14] });
                             var carSvg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#eab308" width="28" height="28"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.22.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/></svg>';
                             var carIcon = L.divIcon({ className: 'rides-marker-car', html: carSvg, iconSize: [28, 28], iconAnchor: [14, 14] });
 
                             function drawRoute(startLat, startLng, endLat, endLng) {
-                                var osrmUrl = 'https://router.project-osrm.org/route/v1/driving/' + startLng + ',' + startLat + ';' + endLng + ',' + endLat + '?overview=full&geometries=geojson';
-                                fetch(osrmUrl)
-                                    .then(function(r) { return r.json(); })
-                                    .then(function(data) {
-                                        var route = data && data.routes && data.routes[0] ? data.routes[0] : null;
-                                        if (!route || !route.geometry || !route.geometry.coordinates) {
-                                            L.polyline([[startLat, startLng], [endLat, endLng]], { color: '#2563eb', weight: 3, opacity: 0.7 }).addTo(map);
-                                            return;
-                                        }
-                                        var points = route.geometry.coordinates.map(function(c) { return [c[1], c[0]]; });
-                                        L.polyline(points, { color: '#2563eb', weight: 4, opacity: 0.85 }).addTo(map);
-                                    })
-                                    .catch(function() {
-                                        L.polyline([[startLat, startLng], [endLat, endLng]], { color: '#2563eb', weight: 3, opacity: 0.7 }).addTo(map);
-                                    });
+                                kit.drawRoute(map, [startLat, startLng], [endLat, endLng]);
                             }
 
                             function addRidePoints(ride, startLat, startLng, endLat, endLng) {
@@ -204,11 +190,9 @@
                                 function doGeocode(addr, isEnd, delay) {
                                     if (!addr || !addr.trim()) return;
                                     setTimeout(function() {
-                                        fetch('https://nominatim.openstreetmap.org/search?q=' + encodeURIComponent(addr) + '&format=json&limit=1', {
-                                            headers: { 'Accept': 'application/json', 'User-Agent': 'KinTaxi-Admin/1.0' }
-                                        }).then(function(r) { return r.json(); }).then(function(data) {
-                                            if (data && data[0] && data[0].lat != null && data[0].lon != null) {
-                                                var lat = parseFloat(data[0].lat), lng = parseFloat(data[0].lon);
+                                        kit.geocode(addr).then(function(result) {
+                                            if (result) {
+                                                var lat = result[0], lng = result[1];
                                                 var label = 'Course #' + ride.id;
                                                 if (isEnd) {
                                                     L.marker([lat, lng], { icon: redIcon }).addTo(map).bindPopup('<strong>Arrivée</strong> – ' + label);
