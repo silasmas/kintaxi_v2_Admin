@@ -109,13 +109,14 @@ class VehicleResource extends Resource
         return $table
             ->modifyQueryUsing(fn ($query) => $query->with('owner'))
             ->columns([
-                Tables\Columns\TextColumn::make('registration_number')->label('Plaque')->searchable()->sortable(),
+                Tables\Columns\TextColumn::make('registration_number')->label('Plaque')->searchable()->sortable()->sticky(),
                 Tables\Columns\TextColumn::make('mark')->label('Marque')->searchable(),
                 Tables\Columns\TextColumn::make('model')->label('Modèle')->searchable(),
                 Tables\Columns\ViewColumn::make('owner')
                     ->label('Propriétaire')
                     ->view('filament.tables.columns.owner-with-avatar')
-                    ->sortable(query: fn ($query, string $direction) => $query->orderBy('user_id', $direction)),
+                    ->sortable(query: fn ($query, string $direction) => $query->orderBy('user_id', $direction))
+                    ->sticky(),
                 Tables\Columns\TextColumn::make('category.category_name')->label('Catégorie')->badge(),
                 Tables\Columns\TextColumn::make('nb_places')->label('Places')->sortable(),
                 Tables\Columns\TextColumn::make('status.status_name')

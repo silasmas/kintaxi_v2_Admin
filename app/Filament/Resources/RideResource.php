@@ -128,7 +128,7 @@ class RideResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('id')->label('ID')->sortable(),
+                Tables\Columns\TextColumn::make('id')->label('ID')->sortable()->sticky(),
                 Tables\Columns\TextColumn::make('ride_status')->label('Statut')->badge()->formatStateUsing(fn (string $state): string => match ($state) {
                     'requested' => 'Demandée',
                     'accepted' => 'Acceptée',
@@ -136,7 +136,7 @@ class RideResource extends Resource
                     'completed' => 'Terminée',
                     'canceled' => 'Annulée',
                     default => $state,
-                }),
+                })->sticky(),
                 Tables\Columns\TextColumn::make('passenger.email')->label('Passager')->searchable(),
                 Tables\Columns\TextColumn::make('driver.email')->label('Chauffeur'),
                 Tables\Columns\TextColumn::make('distance')->label('Distance')->suffix(' km')->sortable(),

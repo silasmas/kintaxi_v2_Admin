@@ -3,6 +3,8 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\UserResource\Pages;
+use App\Filament\Resources\UserResource\RelationManagers\LoyaltyHistoriesRelationManager;
+use App\Filament\Resources\UserResource\RelationManagers\LoyaltyRedemptionHistoriesRelationManager;
 use App\Models\User;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -299,12 +301,13 @@ class UserResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('id')->label('ID')->sortable(),
+                Tables\Columns\TextColumn::make('id')->label('ID')->sortable()->sticky(),
                 Tables\Columns\ViewColumn::make('avatar')
                     ->label('')
                     ->state(fn (User $record): User => $record)
                     ->view('filament.tables.columns.owner-with-avatar')
-                    ->sortable(false),
+                    ->sortable(false)
+                    ->sticky(),
                 Tables\Columns\TextColumn::make('full_name')
                     ->label('Utilisateur')
                     ->state(fn (User $record): string => $record->getFilamentName())
@@ -314,7 +317,8 @@ class UserResource extends Resource
                             ->orWhere('lastname', 'like', "%{$search}%")
                             ->orWhere('email', 'like', "%{$search}%")
                             ->orWhere('phone', 'like', "%{$search}%");
-                    }),
+                    })
+                    ->sticky(),
                 Tables\Columns\TextColumn::make('email')->searchable()->sortable(),
                 Tables\Columns\TextColumn::make('phone')->searchable(),
                 Tables\Columns\TextColumn::make('role.role_name')->label('Rôle app')->badge(),
@@ -353,7 +357,10 @@ class UserResource extends Resource
 
     public static function getRelations(): array
     {
-        return [];
+        return [
+            LoyaltyHistoriesRelationManager::class,
+            LoyaltyRedemptionHistoriesRelationManager::class,
+        ];
     }
 
     public static function getPages(): array

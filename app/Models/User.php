@@ -209,6 +209,16 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasName
         return $this->hasMany(KycVerification::class, 'user_id');
     }
 
+    public function loyaltyHistories(): HasMany
+    {
+        return $this->hasMany(LoyaltyHistory::class, 'user_id');
+    }
+
+    public function loyaltyRedemptionHistories(): HasMany
+    {
+        return $this->hasMany(LoyaltyRedemptionHistory::class, 'user_id');
+    }
+
     public function latestKycVerification(): HasOne
     {
         return $this->hasOne(KycVerification::class, 'user_id')->latestOfMany('updated_at');

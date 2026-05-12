@@ -154,7 +154,8 @@ class KycVerificationResource extends Resource
             ->columns([
                 Tables\Columns\ViewColumn::make('user')
                     ->label('')
-                    ->view('filament.tables.columns.owner-with-avatar'),
+                    ->view('filament.tables.columns.owner-with-avatar')
+                    ->sticky(),
                 Tables\Columns\TextColumn::make('user_name')
                     ->label('Utilisateur')
                     ->state(fn (KycVerification $record): string => $record->user?->getFilamentName() ?? '—')
@@ -166,7 +167,8 @@ class KycVerificationResource extends Resource
                                 ->orWhere('email', 'like', "%{$search}%")
                                 ->orWhere('phone', 'like', "%{$search}%");
                         });
-                    }),
+                    })
+                    ->sticky(),
                 Tables\Columns\TextColumn::make('id')->label('ID')->sortable(),
                 Tables\Columns\TextColumn::make('job_id')->label('Job ID')->searchable()->limit(24),
                 Tables\Columns\TextColumn::make('document_type')->label('Document')->toggleable(),
