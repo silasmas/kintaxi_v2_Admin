@@ -3,14 +3,13 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\KycVerificationResource\Pages;
+use App\Filament\Support\UpdateKycVerificationStatusTableAction;
 use App\Models\KycVerification;
-use App\Services\SmileId\StatusSyncService;
 use Filament\Forms\Form;
 use Filament\Infolists\Components\Section;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Infolists\Components\ViewEntry;
 use Filament\Infolists\Infolist;
-use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -109,10 +108,20 @@ class KycVerificationResource extends Resource
                             ->view('filament.infolists.entries.kyc-media-preview')
                             ->columnSpanFull(),
                     ]),
-                Section::make('Résultat Smile ID (extrait JSON)')
+                Section::make('Synthèse Smile ID')
+                    ->description('Métadonnées lisibles (sans JSON brut). Les fichiers visualisables figurent dans la section « Pièce et photos soumises ».')
+                    ->schema([
+                        ViewEntry::make('smile_summary')
+                            ->label('')
+                            ->view('filament.infolists.entries.kyc-smile-summary')
+                            ->columnSpanFull(),
+                    ])
+                    ->collapsed(false),
+                Section::make('Données techniques (JSON brut)')
+                    ->description('Réservé au débogage — inclut résultat Smile et payload callback.')
                     ->schema([
                         TextEntry::make('smile_result_json')
-                            ->label('')
+                            ->label('smile_result_json')
                             ->columnSpanFull()
                             ->formatStateUsing(function (?string $state): string {
                                 if ($state === null || $state === '') {
@@ -125,12 +134,8 @@ class KycVerificationResource extends Resource
 
                                 return json_encode($decoded, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) ?: $state;
                             }),
-                    ])
-                    ->collapsed(),
-                Section::make('Payload callback (brut)')
-                    ->schema([
                         TextEntry::make('callback_payload_json')
-                            ->label('')
+                            ->label('callback_payload_json')
                             ->columnSpanFull()
                             ->formatStateUsing(function (?string $state): string {
                                 if ($state === null || $state === '') {
@@ -200,45 +205,7 @@ class KycVerificationResource extends Resource
             ])
             ->actions([
                 Tables\Actions\ViewAction::make(),
-                Tables\Actions\Action::make('update_status')
-                    ->label('Mettre à jour statut')
-                    ->icon('heroicon-o-pencil-square')
-                    ->form([
-                        \Filament\Forms\Components\Select::make('status')
-                            ->label('Nouveau statut')
-                            ->options([
-                                'pending' => 'En attente',
-                                'approved' => 'Approuvé',
-                                'rejected' => 'Refusé',
-                                'under_review' => 'En revue',
-                                'completed' => 'Terminé',
-                            ])
-                            ->required(),
-                    ])
-                    ->action(function (KycVerification $record, array $data): void {
-                        $newStatus = (string) ($data['status'] ?? 'pending');
-                        $record->update([
-                            'status' => $newStatus,
-                            'verified_at' => in_array($newStatus, ['approved', 'rejected', 'completed', 'under_review'], true) ? now() : null,
-                        ]);
-
-                        if ($record->user) {
-                            if ($newStatus === 'approved') {
-                                $record->user->update(['kyc_verified' => 1, 'kyc_verified_at' => now()]);
-                            } elseif ($newStatus === 'rejected') {
-                                $record->user->update(['kyc_verified' => 0, 'kyc_verified_at' => null]);
-                            }
-                        }
-
-                        $remoteOk = app(StatusSyncService::class)->pushStatus($record, $newStatus);
-
-                        Notification::make()
-                            ->title($remoteOk
-                                ? 'Statut mis à jour en local et synchronisé à distance'
-                                : 'Statut mis à jour en local (sync distante non disponible)')
-                            ->success()
-                            ->send();
-                    }),
+                UpdateKycVerificationStatusTableAction::make(),
             ])
             ->bulkActions([]);
     }

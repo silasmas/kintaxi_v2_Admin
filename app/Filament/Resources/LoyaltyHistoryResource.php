@@ -121,7 +121,7 @@ class LoyaltyHistoryResource extends Resource
                 Tables\Columns\ViewColumn::make('user_avatar')
                     ->label('')
                     ->state(fn (LoyaltyHistory $record) => $record->user)
-                    ->view('filament.tables.columns.user-avatar-hover')
+                    ->view('filament.tables.columns.owner-with-avatar')
                     ->grow(false),
                 Tables\Columns\TextColumn::make('user_filament_name')
                     ->label('Utilisateur')

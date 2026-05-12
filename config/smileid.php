@@ -23,4 +23,9 @@ return [
      * Si null, seule la base locale est mise à jour.
      */
     'status_update_endpoint' => env('SMILEID_STATUS_UPDATE_ENDPOINT'),
+
+    /**
+     * Surcharge optionnelle de l’URL job_status (sinon sandbox / prod selon sid_server).
+     */
+    'job_status_url' => env('SMILEID_JOB_STATUS_URL'),
 ];

@@ -89,6 +89,11 @@ class DocumentResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('id')->label('ID')->sortable(),
+                Tables\Columns\ViewColumn::make('file_thumb')
+                    ->label('')
+                    ->state(fn (Document $record): string => (string) $record->file_url)
+                    ->view('filament.tables.columns.url-image-hover')
+                    ->grow(false),
                 Tables\Columns\TextColumn::make('type')->label('Type')->badge()->formatStateUsing(fn (string $state): string => match ($state) {
                     'id_card' => 'CNI',
                     'driving_license' => 'Permis',

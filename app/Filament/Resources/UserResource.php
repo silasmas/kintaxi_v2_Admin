@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\UserResource\Pages;
+use App\Filament\Resources\UserResource\RelationManagers\KycVerificationsRelationManager;
 use App\Filament\Resources\UserResource\RelationManagers\LoyaltyHistoriesRelationManager;
 use App\Filament\Resources\UserResource\RelationManagers\LoyaltyRedemptionHistoriesRelationManager;
 use App\Models\User;
@@ -360,6 +361,7 @@ class UserResource extends Resource
         return [
             LoyaltyHistoriesRelationManager::class,
             LoyaltyRedemptionHistoriesRelationManager::class,
+            KycVerificationsRelationManager::class,
         ];
     }
 

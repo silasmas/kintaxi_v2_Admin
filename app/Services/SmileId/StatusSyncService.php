@@ -14,21 +14,13 @@ class StatusSyncService
             return false;
         }
 
-        $timestamp = now()->toIso8601String();
-        $partnerId = (string) config('smileid.partner_id', '');
-        $apiKey = (string) config('smileid.api_key', '');
-        $signature = '';
-
-        if ($partnerId !== '' && $apiKey !== '') {
-            $message = $timestamp.$partnerId.'sid_request';
-            $signature = base64_encode(hash_hmac('sha256', $message, $apiKey, true));
-        }
+        $sig = SmileIdSignature::generate();
 
         $response = Http::timeout(15)->post($endpoint, [
             'job_id' => $verification->job_id,
             'status' => $status,
-            'timestamp' => $timestamp,
-            'signature' => $signature,
+            'timestamp' => $sig['timestamp'],
+            'signature' => $sig['signature'],
             'partner_params' => [
                 'user_id' => $verification->user_id,
                 'job_id' => $verification->job_id,

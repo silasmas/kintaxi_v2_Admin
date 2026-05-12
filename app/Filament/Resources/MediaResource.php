@@ -65,14 +65,10 @@ class MediaResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\ImageColumn::make('path')
+                Tables\Columns\ViewColumn::make('path')
                     ->label('Aperçu')
-                    ->disk(fn (Media $record) => $record->disk ?? 's3_media')
-                    ->visibility('public')
-                    ->defaultImageUrl(fn (Media $record) => $record->type === 'video'
-                        ? 'https://placehold.co/80x80?text=Video'
-                        : null)
-                    ->circular(),
+                    ->view('filament.tables.columns.media-thumb-hover')
+                    ->grow(false),
                 Tables\Columns\TextColumn::make('name')
                     ->label('Nom')
                     ->searchable()

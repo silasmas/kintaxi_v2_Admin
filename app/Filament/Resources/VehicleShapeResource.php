@@ -58,6 +58,11 @@ class VehicleShapeResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('shape_name')->label('Nom')->searchable()->sortable(),
+                Tables\Columns\ViewColumn::make('photo_thumb')
+                    ->label('')
+                    ->state(fn (VehicleShape $record): string => (string) ($record->photo ?? ''))
+                    ->view('filament.tables.columns.url-image-hover')
+                    ->grow(false),
                 Tables\Columns\TextColumn::make('shape_description')->label('Description')->limit(40),
                 Tables\Columns\TextColumn::make('vehicles_count')->label('Véhicules')->counts('vehicles'),
             ])

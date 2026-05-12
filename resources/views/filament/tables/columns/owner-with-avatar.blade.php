@@ -1,40 +1,8 @@
-@php
-    $owner = $getState();
-    $avatarUrl = $owner?->getFilamentAvatarUrl();
-    $initials = $owner?->getFilamentInitials() ?? '?';
-    $ownerName = $owner?->getFilamentName() ?? $owner?->email ?? $owner?->phone ?? '—';
-@endphp
-
-@if ($owner)
-    <div class="flex items-center gap-2">
-        <div
-            x-data="{ imageError: false }"
-            class="shrink-0 h-8 w-8"
-        >
-            @if ($avatarUrl)
-                <img
-                    x-show="! imageError"
-                    x-on:error="imageError = true"
-                    src="{{ $avatarUrl }}"
-                    alt="{{ $ownerName }}"
-                    class="h-8 w-8 rounded-full object-cover object-center"
-                />
-            @endif
-            <div
-                x-show="{{ $avatarUrl ? 'imageError' : 'true' }}"
-                x-cloak
-                x-transition
-                class="fi-avatar-initials flex h-8 w-8 items-center justify-center rounded-full bg-gray-200 text-sm font-semibold text-gray-600 dark:bg-gray-700 dark:text-gray-300"
-            >
-                {{ $initials }}
-            </div>
-        </div>
-        {{-- <span class="text-sm text-gray-950 dark:text-white">
-            {{ $ownerName }}
-        </span> --}}
-        <!-- Raccourci : tapez simplement $ownerName pour afficher le nom du propriétaire -->
-   
-    </div>
-@else
-    <span class="text-gray-400">—</span>
-@endif
+<x-filament.table-avatar-hover
+    :user="$getState()"
+    thumb-class="h-8 w-8"
+    :preview-w="160"
+    :preview-h="168"
+    img-max-class="max-h-[9rem] max-w-[8.5rem]"
+    wire-key-prefix="owner"
+/>
