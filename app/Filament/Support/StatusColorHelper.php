@@ -123,6 +123,34 @@ class StatusColorHelper
   }
 
   /**
+   * Couleur Filament pour une méthode de paiement de course.
+   */
+  public static function paymentMethodColor(string $method): string
+  {
+    return match ($method) {
+      'cash' => 'warning',
+      'kintaxi-wallet' => 'success',
+      'mobile-money' => 'info',
+      'card' => 'primary',
+      default => 'gray',
+    };
+  }
+
+  /**
+   * Libellé français d'une méthode de paiement.
+   */
+  public static function paymentMethodLabel(string $method): string
+  {
+    return match ($method) {
+      'cash' => 'Espèces',
+      'kintaxi-wallet' => 'Portefeuille Kintaxi',
+      'mobile-money' => 'Mobile Money',
+      'card' => 'Carte',
+      default => $method,
+    };
+  }
+
+  /**
    * Couleur Filament pour un type de transaction.
    */
   public static function transactionTypeColor(string $type): string

@@ -2,8 +2,10 @@
 
 namespace App\Filament\Pages\Auth;
 
+use App\Filament\Support\UserTimezoneHelper;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Facades\Filament;
 use Filament\Pages\Auth\EditProfile as BaseEditProfile;
@@ -36,6 +38,12 @@ class EditProfile extends BaseEditProfile
                                     ->label('Téléphone')
                                     ->tel()
                                     ->maxLength(255),
+                                Select::make('timezone')
+                                    ->label('Fuseau horaire')
+                                    ->options(UserTimezoneHelper::options())
+                                    ->default(fn (): string => UserTimezoneHelper::resolve())
+                                    ->searchable()
+                                    ->helperText('Utilisé pour afficher les heures des courses commandées.'),
                                 TextInput::make('username')
                                     ->label('Nom d\'utilisateur')
                                     ->maxLength(255),
