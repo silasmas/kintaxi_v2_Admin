@@ -2,7 +2,9 @@
 
 namespace App\Filament\Resources;
 
+use App\Filament\Resources\Concerns\HidesFromNavigation;
 use App\Filament\Resources\FileModelResource\Pages;
+use App\Filament\Support\StatusColorHelper;
 use App\Models\FileModel;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -14,6 +16,8 @@ use Filament\Tables\Table;
 
 class FileModelResource extends Resource
 {
+    use HidesFromNavigation;
+
     protected static ?string $model = FileModel::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-document-duplicate';
@@ -69,7 +73,8 @@ class FileModelResource extends Resource
                 Tables\Columns\TextColumn::make('status.status_name')
                     ->label('Statut')
                     ->badge()
-                    ->formatStateUsing(fn (?string $state): string => \App\Models\Status::formatShort($state)),
+                    ->formatStateUsing(fn (?string $state): string => \App\Models\Status::formatShort($state))
+                    ->color(fn (?string $state): string => StatusColorHelper::statusNameColor($state)),
                 Tables\Columns\TextColumn::make('created_at')->label('Créé le')->dateTime('d/m/Y')->sortable(),
             ])
             ->actions([

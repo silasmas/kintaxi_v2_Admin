@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Filament\Support\CurrencyFormatter;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -31,5 +32,11 @@ class Currency extends Model
     public function updater(): BelongsTo
     {
         return $this->belongsTo(User::class, 'updated_by');
+    }
+
+    protected static function booted(): void
+    {
+        static::saved(fn () => CurrencyFormatter::clearCache());
+        static::deleted(fn () => CurrencyFormatter::clearCache());
     }
 }

@@ -6,8 +6,6 @@ use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
 use App\Models\AppNotification;
 use App\Models\Country;
 use App\Models\Currency;
-use App\Models\Document;
-use App\Models\FileModel;
 use App\Models\Payment;
 use App\Models\Ride;
 use App\Models\Review;
@@ -23,7 +21,7 @@ class StatsOverviewWidget extends BaseWidget
 {
     use HasWidgetShield;
 
-    protected static ?int $sort = 1;
+    protected static ?int $sort = 2;
 
     protected int|string|array $columnSpan = 'full';
 
@@ -73,16 +71,6 @@ class StatsOverviewWidget extends BaseWidget
                 ->descriptionIcon('heroicon-m-star')
                 ->color('warning')
                 ->url("{$baseUrl}/reviews", false),
-
-            Stat::make('Documents', Number::format(Document::count()))
-                ->description('Documents uploadés')
-                ->descriptionIcon('heroicon-m-document-text')
-                ->url("{$baseUrl}/documents", false),
-
-            Stat::make('Fichiers', Number::format(FileModel::count()))
-                ->description('Fichiers stockés')
-                ->descriptionIcon('heroicon-m-folder')
-                ->url("{$baseUrl}/file-models", false),
 
             Stat::make('Notifications', Number::format(AppNotification::count()))
                 ->description('Notifications envoyées')

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources;
 
+use App\Filament\Resources\Concerns\HidesFromNavigation;
 use App\Filament\Resources\DocumentResource\Pages;
 use App\Models\Document;
 use Filament\Forms;
@@ -12,6 +13,8 @@ use Filament\Tables\Table;
 
 class DocumentResource extends Resource
 {
+    use HidesFromNavigation;
+
     protected static ?string $model = Document::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-document-text';

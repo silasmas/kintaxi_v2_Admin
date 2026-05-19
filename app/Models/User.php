@@ -9,6 +9,7 @@ use Filament\Panel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -167,6 +168,19 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasName
     public function documents(): HasMany
     {
         return $this->hasMany(Document::class, 'user_id');
+    }
+
+    public function media(): HasMany
+    {
+        return $this->hasMany(Media::class, 'user_id');
+    }
+
+    /**
+     * Fichiers rattachés aux véhicules possédés par l'utilisateur.
+     */
+    public function vehicleFiles(): HasManyThrough
+    {
+        return $this->hasManyThrough(FileModel::class, Vehicle::class, 'user_id', 'vehicle_id');
     }
 
     public function ridesAsPassenger(): HasMany

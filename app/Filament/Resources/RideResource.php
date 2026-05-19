@@ -3,12 +3,16 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\RideResource\Pages;
+use App\Filament\Support\CurrencyFormatter;
+use App\Filament\Support\StatusColorHelper;
 use App\Models\Ride;
+use App\Models\User;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Infolists\Components\Section;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Infolists\Components\ViewEntry;
+use Illuminate\Database\Eloquent\Builder;
 use Filament\Infolists\Infolist;
 use Filament\Resources\Resource;
 use Filament\Tables;
@@ -43,11 +47,23 @@ class RideResource extends Resource
         return $infolist->schema([
             Section::make('Informations course')
                 ->schema([
-                    TextEntry::make('ride_status')->label('Statut')->badge(),
-                    TextEntry::make('passenger.firstname')->label('Passager'),
-                    TextEntry::make('driver.firstname')->label('Chauffeur'),
+                    TextEntry::make('ride_status')
+                        ->label('Statut')
+                        ->badge()
+                        ->formatStateUsing(fn (string $state): string => StatusColorHelper::rideStatusLabel($state))
+                        ->color(fn (string $state): string => StatusColorHelper::rideStatusColor($state)),
+                    ViewEntry::make('passenger')
+                        ->label('Client')
+                        ->state(fn (Ride $record): ?User => $record->passenger)
+                        ->view('filament.infolists.entries.user-participant'),
+                    ViewEntry::make('driver')
+                        ->label('Chauffeur')
+                        ->state(fn (Ride $record): ?User => $record->driver)
+                        ->view('filament.infolists.entries.user-participant'),
                     TextEntry::make('distance')->label('Distance')->suffix(' km'),
-                    TextEntry::make('cost')->label('Coût')->money('CDF'),
+                    CurrencyFormatter::configureMoneyEntry(
+                        TextEntry::make('cost')->label('Coût')
+                    ),
                     TextEntry::make('payment_method')->label('Paiement'),
                     TextEntry::make('created_at')->label('Date')->dateTime('d/m/Y H:i'),
                 ])->columns(2),
@@ -56,6 +72,13 @@ class RideResource extends Resource
                     ViewEntry::make('ride_map')
                         ->label('')
                         ->view('filament.infolists.entries.ride-route-map')
+                        ->columnSpanFull(),
+                ]),
+            Section::make('Photo & évaluation')
+                ->schema([
+                    ViewEntry::make('ride_extras')
+                        ->label('')
+                        ->view('filament.infolists.entries.ride-detail-extras')
                         ->columnSpanFull(),
                 ]),
         ]);
@@ -127,20 +150,43 @@ class RideResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with(['passenger', 'driver', 'vehicle']))
             ->columns([
                 Tables\Columns\TextColumn::make('id')->label('ID')->sortable()->sticky(),
-                Tables\Columns\TextColumn::make('ride_status')->label('Statut')->badge()->formatStateUsing(fn (string $state): string => match ($state) {
-                    'requested' => 'Demandée',
-                    'accepted' => 'Acceptée',
-                    'in_progress' => 'En cours',
-                    'completed' => 'Terminée',
-                    'canceled' => 'Annulée',
-                    default => $state,
-                })->sticky(),
-                Tables\Columns\TextColumn::make('passenger.email')->label('Passager')->searchable(),
-                Tables\Columns\TextColumn::make('driver.email')->label('Chauffeur'),
+                Tables\Columns\TextColumn::make('ride_status')
+                    ->label('Statut')
+                    ->badge()
+                    ->formatStateUsing(fn (string $state): string => StatusColorHelper::rideStatusLabel($state))
+                    ->color(fn (string $state): string => StatusColorHelper::rideStatusColor($state))
+                    ->sticky(),
+                Tables\Columns\ViewColumn::make('passenger')
+                    ->label('Client')
+                    ->view('filament.tables.columns.user-with-avatar-and-name')
+                    ->searchable(query: function (Builder $query, string $search): Builder {
+                        return $query->whereHas('passenger', function (Builder $userQuery) use ($search): Builder {
+                            return $userQuery
+                                ->where('firstname', 'like', "%{$search}%")
+                                ->orWhere('lastname', 'like', "%{$search}%")
+                                ->orWhere('email', 'like', "%{$search}%")
+                                ->orWhere('phone', 'like', "%{$search}%");
+                        });
+                    }),
+                Tables\Columns\ViewColumn::make('driver')
+                    ->label('Chauffeur')
+                    ->view('filament.tables.columns.user-with-avatar-and-name')
+                    ->searchable(query: function (Builder $query, string $search): Builder {
+                        return $query->whereHas('driver', function (Builder $userQuery) use ($search): Builder {
+                            return $userQuery
+                                ->where('firstname', 'like', "%{$search}%")
+                                ->orWhere('lastname', 'like', "%{$search}%")
+                                ->orWhere('email', 'like', "%{$search}%")
+                                ->orWhere('phone', 'like', "%{$search}%");
+                        });
+                    }),
                 Tables\Columns\TextColumn::make('distance')->label('Distance')->suffix(' km')->sortable(),
-                Tables\Columns\TextColumn::make('cost')->label('Coût')->money('CDF')->sortable(),
+                CurrencyFormatter::configureMoneyColumn(
+                    Tables\Columns\TextColumn::make('cost')->label('Coût')->sortable()
+                ),
                 Tables\Columns\TextColumn::make('payment_method')->label('Paiement')->badge(),
                 Tables\Columns\IconColumn::make('paid')->label('Payé')->boolean(),
                 Tables\Columns\TextColumn::make('created_at')->label('Date')->dateTime('d/m/Y H:i')->sortable(),
@@ -154,6 +200,18 @@ class RideResource extends Resource
                     'completed' => 'Terminée',
                     'canceled' => 'Annulée',
                 ]),
+                Tables\Filters\SelectFilter::make('passenger_id')
+                    ->label('Client')
+                    ->relationship('passenger', 'email')
+                    ->getOptionLabelFromRecordUsing(fn (User $record): string => $record->getFilamentName())
+                    ->searchable()
+                    ->preload(),
+                Tables\Filters\SelectFilter::make('driver_id')
+                    ->label('Chauffeur')
+                    ->relationship('driver', 'email')
+                    ->getOptionLabelFromRecordUsing(fn (User $record): string => $record->getFilamentName())
+                    ->searchable()
+                    ->preload(),
             ])
             ->actions([
                 Tables\Actions\ViewAction::make(),
@@ -176,7 +234,6 @@ class RideResource extends Resource
     {
         return [
             'index' => Pages\ListRides::route('/'),
-            'create' => Pages\CreateRide::route('/create'),
             'view' => Pages\ViewRide::route('/{record}'),
             'edit' => Pages\EditRide::route('/{record}/edit'),
         ];

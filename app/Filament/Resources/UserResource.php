@@ -2,8 +2,17 @@
 
 namespace App\Filament\Resources;
 
+use App\Filament\RelationManagers\DocumentsRelationManager;
+use App\Filament\RelationManagers\MediasRelationManager;
+use App\Filament\RelationManagers\RidesAsDriverRelationManager;
+use App\Filament\RelationManagers\RidesAsPassengerRelationManager;
+use App\Filament\RelationManagers\VehicleFilesRelationManager;
+use App\Filament\RelationManagers\VehiclesRelationManager;
 use App\Filament\Resources\UserResource\Pages;
 use App\Filament\Resources\UserResource\RelationManagers\KycVerificationsRelationManager;
+use App\Filament\Support\CurrencyFormatter;
+use App\Filament\Support\StatusColorHelper;
+use App\Filament\Support\VehicleStatusHelper;
 use App\Filament\Resources\UserResource\RelationManagers\LoyaltyHistoriesRelationManager;
 use App\Filament\Resources\UserResource\RelationManagers\LoyaltyRedemptionHistoriesRelationManager;
 use App\Models\User;
@@ -46,7 +55,7 @@ class UserResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()->with(['latestKycVerification']);
+        return parent::getEloquentQuery()->with(['latestKycVerification', 'role']);
     }
 
     public static function infolist(Infolist $infolist): Infolist
@@ -74,8 +83,15 @@ class UserResource extends Resource
                                 default => '—',
                             }),
                         TextEntry::make('birthdate')->label('Date de naissance')->date('d/m/Y'),
-                        TextEntry::make('status.status_name')->label('Statut')->badge(),
-                        TextEntry::make('role.role_name')->label('Rôle app'),
+                        TextEntry::make('status.status_name')
+                            ->label('Statut')
+                            ->badge()
+                            ->formatStateUsing(fn (?string $state): string => \App\Models\Status::formatShort($state))
+                            ->color(fn (?string $state): string => StatusColorHelper::statusNameColor($state)),
+                        TextEntry::make('role.role_name')
+                            ->label('Rôle app')
+                            ->badge()
+                            ->color(fn (?string $state): string => StatusColorHelper::roleColor($state)),
                         TextEntry::make('roles.name')->label('Rôles Shield')->badge(),
                     ])
                     ->columns(2),
@@ -91,10 +107,9 @@ class UserResource extends Resource
                     ->collapsed(),
                 Section::make('Portefeuille & Fidélité')
                     ->schema([
-                        TextEntry::make('wallet_balance')
-                            ->label('Solde portefeuille')
-                            ->money('XAF')
-                            ->color(fn ($state) => ($state ?? 0) >= 0 ? 'success' : 'danger'),
+                        CurrencyFormatter::configureMoneyEntry(
+                            TextEntry::make('wallet_balance')->label('Solde portefeuille')
+                        )->color(fn ($state) => ($state ?? 0) >= 0 ? 'success' : 'danger'),
                         TextEntry::make('loyalty_point')->label('Points fidélité')->numeric(),
                     ])
                     ->columns(2),
@@ -123,36 +138,23 @@ class UserResource extends Resource
                     ])
                     ->columns(2)
                     ->collapsed(),
-                Section::make('Véhicule(s)')
-                    ->description('Véhicules possédés par l\'utilisateur')
+                Section::make('Véhicules soumis')
+                    ->description('Voir l\'onglet « Véhicules soumis » pour la liste complète et les pièces jointes.')
                     ->schema([
                         TextEntry::make('vehicles_count')
                             ->label('Nombre de véhicules')
                             ->state(fn (User $record): int => $record->vehicles()->count())
                             ->default(0),
-                        RepeatableEntry::make('vehicles')
-                            ->label('')
-                            ->schema([
-                                TextEntry::make('registration_number')->label('Immatriculation'),
-                                TextEntry::make('mark')->label('Marque'),
-                                TextEntry::make('model')->label('Modèle'),
-                                TextEntry::make('color')->label('Couleur'),
-                                TextEntry::make('shape.name')->label('Type'),
-                            ])
-                            ->columns(2)
-                            ->contained()
-                            ->hiddenLabel(),
+                        TextEntry::make('vehicles_validated_count')
+                            ->label('Validés')
+                            ->state(fn (User $record): int => VehicleStatusHelper::applyValidated($record->vehicles())->count())
+                            ->default(0),
+                        TextEntry::make('vehicles_failed_count')
+                            ->label('Échoués / refusés')
+                            ->state(fn (User $record): int => VehicleStatusHelper::applyFailed($record->vehicles())->count())
+                            ->default(0),
                     ])
-                    ->visible(fn (User $record): bool => $record->vehicles()->count() > 0),
-                Section::make('Aucun véhicule')
-                    ->description('Cet utilisateur ne possède aucun véhicule enregistré.')
-                    ->schema([
-                        TextEntry::make('no_vehicles')
-                            ->label('')
-                            ->state('Aucun véhicule enregistré')
-                            ->hiddenLabel(),
-                    ])
-                    ->visible(fn (User $record): bool => $record->vehicles()->count() === 0),
+                    ->columns(3),
                 Section::make('Véhicule actuel')
                     ->schema([
                         TextEntry::make('currentVehicle.registration_number')->label('Immatriculation'),
@@ -162,13 +164,18 @@ class UserResource extends Resource
                     ->columns(2)
                     ->visible(fn (User $record): bool => $record->currentVehicle !== null),
                 Section::make('Transactions')
+                    ->collapsed()
                     ->schema([
                         RepeatableEntry::make('transactions')
                             ->label('')
                             ->schema([
                                 TextEntry::make('type')->label('Type'),
-                                TextEntry::make('amount')->label('Montant')->money('XAF'),
-                                TextEntry::make('wallet_balance_after')->label('Solde après')->money('XAF'),
+                                CurrencyFormatter::configureMoneyEntry(
+                                    TextEntry::make('amount')->label('Montant')
+                                ),
+                                CurrencyFormatter::configureMoneyEntry(
+                                    TextEntry::make('wallet_balance_after')->label('Solde après')
+                                ),
                                 TextEntry::make('created_at')->label('Date')->dateTime('d/m/Y H:i'),
                             ])
                             ->columns(4)
@@ -185,47 +192,19 @@ class UserResource extends Resource
                             ->hiddenLabel(),
                     ])
                     ->visible(fn (User $record): bool => $record->transactions()->count() === 0),
-                Section::make('Documents')
-                    ->schema([
-                        RepeatableEntry::make('documents')
-                            ->label('')
-                            ->schema([
-                                TextEntry::make('type')->label('Type'),
-                                TextEntry::make('verified')
-                                    ->label('Vérifié')
-                                    ->formatStateUsing(fn ($state) => $state ? 'Oui' : 'Non')
-                                    ->badge()
-                                    ->color(fn ($state) => $state ? 'success' : 'warning'),
-                            ])
-                            ->columns(2)
-                            ->contained()
-                            ->hiddenLabel(),
-                    ])
-                    ->visible(fn (User $record): bool => $record->documents()->count() > 0),
-                Section::make('Aucun document')
-                    ->description('Aucun document enregistré.')
-                    ->schema([
-                        TextEntry::make('no_documents')
-                            ->label('')
-                            ->state('Aucun document')
-                            ->hiddenLabel(),
-                    ])
-                    ->visible(fn (User $record): bool => $record->documents()->count() === 0),
-                Section::make('Trajets (conducteur)')
+                Section::make('Activité courses')
                     ->schema([
                         TextEntry::make('rides_driver_count')
-                            ->label('Nombre de trajets')
-                            ->state(fn (User $record): int => $record->ridesAsDriver()->count()),
-
-                    ])
-                    ->visible(fn (User $record): bool => $record->ridesAsDriver()->count() > 0),
-                Section::make('Trajets (passager)')
-                    ->schema([
+                            ->label('Courses chauffeur')
+                            ->state(fn (User $record): int => $record->ridesAsDriver()->count())
+                            ->default(0),
                         TextEntry::make('rides_passenger_count')
-                            ->label('Nombre de trajets')
-                            ->state(fn (User $record): int => $record->ridesAsPassenger()->count()),
+                            ->label('Courses client')
+                            ->state(fn (User $record): int => $record->ridesAsPassenger()->count())
+                            ->default(0),
                     ])
-                    ->visible(fn (User $record): bool => $record->ridesAsPassenger()->count() > 0),
+                    ->columns(2)
+                    ->description('Détail dans les onglets « Courses (chauffeur) » et « Courses (client) ».'),
                 Section::make('Avis reçus')
                     ->schema([
                         TextEntry::make('reviews_received_count')
@@ -322,11 +301,16 @@ class UserResource extends Resource
                     ->sticky(),
                 Tables\Columns\TextColumn::make('email')->searchable()->sortable(),
                 Tables\Columns\TextColumn::make('phone')->searchable(),
-                Tables\Columns\TextColumn::make('role.role_name')->label('Rôle app')->badge(),
+                Tables\Columns\TextColumn::make('role.role_name')
+                    ->label('Rôle app')
+                    ->badge()
+                    ->color(fn (?string $state): string => StatusColorHelper::roleColor($state)),
                 Tables\Columns\TextColumn::make('roles.name')
                     ->label('Rôles Shield')
                     ->badge(),
-                Tables\Columns\TextColumn::make('wallet_balance')->label('Solde')->numeric(decimalPlaces: 2),
+                CurrencyFormatter::configureMoneyColumn(
+                    Tables\Columns\TextColumn::make('wallet_balance')->label('Solde')->sortable()
+                ),
                 Tables\Columns\IconColumn::make('kyc_verified')->label('KYC')->boolean()->toggleable(),
                 Tables\Columns\TextColumn::make('latestKycVerification.status')
                     ->label('Statut KYC')
@@ -343,6 +327,45 @@ class UserResource extends Resource
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('role_id')->relationship('role', 'role_name')->label('Rôle'),
+                Tables\Filters\TernaryFilter::make('has_vehicles')
+                    ->label('Possède des véhicules')
+                    ->queries(
+                        true: fn (Builder $query) => $query->whereHas('vehicles'),
+                        false: fn (Builder $query) => $query->whereDoesntHave('vehicles'),
+                    ),
+                Tables\Filters\SelectFilter::make('vehicle_validation')
+                    ->label('Véhicules (statut)')
+                    ->options([
+                        'validated' => 'Au moins un véhicule validé',
+                        'failed' => 'Au moins un véhicule échoué',
+                        'pending' => 'Au moins un véhicule en attente',
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        $value = $data['value'] ?? null;
+                        if ($value === 'validated') {
+                            return $query->whereHas('vehicles', fn (Builder $vehicleQuery) => VehicleStatusHelper::applyValidated($vehicleQuery));
+                        }
+                        if ($value === 'failed') {
+                            return $query->whereHas('vehicles', fn (Builder $vehicleQuery) => VehicleStatusHelper::applyFailed($vehicleQuery));
+                        }
+                        if ($value === 'pending') {
+                            return $query->whereHas('vehicles', fn (Builder $vehicleQuery) => VehicleStatusHelper::applyPending($vehicleQuery));
+                        }
+
+                        return $query;
+                    }),
+                Tables\Filters\TernaryFilter::make('has_rides_as_driver')
+                    ->label('A effectué des courses (chauffeur)')
+                    ->queries(
+                        true: fn (Builder $query) => $query->whereHas('ridesAsDriver'),
+                        false: fn (Builder $query) => $query->whereDoesntHave('ridesAsDriver'),
+                    ),
+                Tables\Filters\TernaryFilter::make('has_rides_as_passenger')
+                    ->label('A passé des courses (client)')
+                    ->queries(
+                        true: fn (Builder $query) => $query->whereHas('ridesAsPassenger'),
+                        false: fn (Builder $query) => $query->whereDoesntHave('ridesAsPassenger'),
+                    ),
             ])
             ->actions([
                 Tables\Actions\ViewAction::make(),
@@ -359,6 +382,12 @@ class UserResource extends Resource
     public static function getRelations(): array
     {
         return [
+            VehiclesRelationManager::class,
+            RidesAsDriverRelationManager::class,
+            RidesAsPassengerRelationManager::class,
+            DocumentsRelationManager::class,
+            VehicleFilesRelationManager::class,
+            MediasRelationManager::class,
             LoyaltyHistoriesRelationManager::class,
             LoyaltyRedemptionHistoriesRelationManager::class,
             KycVerificationsRelationManager::class,

@@ -12,6 +12,9 @@ use Filament\Widgets\TableWidget as BaseWidget;
 class RecentVehiclesWidget extends BaseWidget
 {
     use HasWidgetShield;
+
+    protected static bool $isDiscovered = false;
+
     protected static ?int $sort = 2;
 
     protected int|string|array $columnSpan = 2;

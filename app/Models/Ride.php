@@ -33,6 +33,7 @@ class Ride extends Model
         'scheduled_time',
         'cancellation_reason',
         'canceled_by',
+        'photos',
     ];
 
     protected function casts(): array

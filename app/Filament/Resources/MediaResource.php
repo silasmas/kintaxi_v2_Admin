@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources;
 
+use App\Filament\Resources\Concerns\HidesFromNavigation;
 use App\Filament\Resources\MediaResource\Pages;
 use App\Models\Media;
 use Filament\Forms;
@@ -13,6 +14,8 @@ use Illuminate\Support\Str;
 
 class MediaResource extends Resource
 {
+    use HidesFromNavigation;
+
     protected static ?string $model = Media::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-photo';

@@ -2,7 +2,12 @@
 
 namespace App\Filament\Resources;
 
+use App\Filament\RelationManagers\DocumentsRelationManager;
+use App\Filament\RelationManagers\FilesRelationManager;
+use App\Filament\RelationManagers\MediasRelationManager;
 use App\Filament\Resources\VehicleResource\Pages;
+use App\Filament\Support\StatusColorHelper;
+use App\Filament\Support\VehicleStatusHelper;
 use App\Models\Vehicle;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -114,7 +119,7 @@ class VehicleResource extends Resource
                 Tables\Columns\TextColumn::make('model')->label('Modèle')->searchable(),
                 Tables\Columns\ViewColumn::make('owner')
                     ->label('Propriétaire')
-                    ->view('filament.tables.columns.owner-with-avatar')
+                    ->view('filament.tables.columns.owner-with-avatar-and-name')
                     ->sortable(query: fn ($query, string $direction) => $query->orderBy('user_id', $direction))
                     ->sticky(),
                 Tables\Columns\TextColumn::make('category.category_name')->label('Catégorie')->badge(),
@@ -122,10 +127,32 @@ class VehicleResource extends Resource
                 Tables\Columns\TextColumn::make('status.status_name')
                     ->label('Statut')
                     ->badge()
-                    ->formatStateUsing(fn (?string $state): string => \App\Models\Status::formatShort($state)),
+                    ->formatStateUsing(fn (?string $state): string => \App\Models\Status::formatShort($state))
+                    ->color(fn (?string $state): string => StatusColorHelper::statusNameColor($state)),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('category_id')->relationship('category', 'category_name')->label('Catégorie'),
+                Tables\Filters\SelectFilter::make('validation')
+                    ->label('Validation')
+                    ->options([
+                        'validated' => 'Validé',
+                        'failed' => 'Échoué / refusé',
+                        'pending' => 'En attente',
+                    ])
+                    ->query(function ($query, array $data) {
+                        $value = $data['value'] ?? null;
+                        if ($value === 'validated') {
+                            return VehicleStatusHelper::applyValidated($query);
+                        }
+                        if ($value === 'failed') {
+                            return VehicleStatusHelper::applyFailed($query);
+                        }
+                        if ($value === 'pending') {
+                            return VehicleStatusHelper::applyPending($query);
+                        }
+
+                        return $query;
+                    }),
             ])
             ->actions([
                 Tables\Actions\ViewAction::make(),
@@ -141,7 +168,11 @@ class VehicleResource extends Resource
 
     public static function getRelations(): array
     {
-        return [];
+        return [
+            DocumentsRelationManager::class,
+            FilesRelationManager::class,
+            MediasRelationManager::class,
+        ];
     }
 
     public static function getPages(): array

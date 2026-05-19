@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\PaymentResource\Pages;
+use App\Filament\Support\CurrencyFormatter;
 use App\Models\Payment;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -71,7 +72,25 @@ class PaymentResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('id')->label('ID')->sortable(),
                 Tables\Columns\TextColumn::make('reference')->label('Référence')->searchable(),
-                Tables\Columns\TextColumn::make('amount')->label('Montant')->numeric(decimalPlaces: 2)->sortable()->suffix(fn ($record) => ' ' . ($record->currency ?? 'CDF')),
+                Tables\Columns\TextColumn::make('amount')
+                    ->label('Montant')
+                    ->formatStateUsing(function ($state, Payment $record): string {
+                        $currency = strtoupper((string) ($record->currency ?? 'CDF'));
+                        if ($currency === 'CDF' || $currency === '') {
+                            return CurrencyFormatter::formatUsd($state !== null ? (float) $state : null);
+                        }
+
+                        return number_format((float) $state, 2, ',', ' ').' '.$currency;
+                    })
+                    ->tooltip(function ($state, Payment $record): ?string {
+                        $currency = strtoupper((string) ($record->currency ?? 'CDF'));
+                        if ($currency === 'CDF' || $currency === '') {
+                            return CurrencyFormatter::formatTooltip($state !== null ? (float) $state : null);
+                        }
+
+                        return null;
+                    })
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('currency')->label('Devise'),
                 Tables\Columns\TextColumn::make('channel')->label('Canal'),
                 Tables\Columns\TextColumn::make('ride_id')->label('Course'),

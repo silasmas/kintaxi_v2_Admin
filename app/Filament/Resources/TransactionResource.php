@@ -3,6 +3,8 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\TransactionResource\Pages;
+use App\Filament\Support\CurrencyFormatter;
+use App\Filament\Support\StatusColorHelper;
 use App\Models\Transaction;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -92,14 +94,20 @@ class TransactionResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('id')->label('ID')->sortable(),
                 Tables\Columns\TextColumn::make('user.email')->label('Utilisateur')->searchable(),
-                Tables\Columns\TextColumn::make('type')->label('Type')->badge()->formatStateUsing(fn (string $state): string => match ($state) {
-                    'deposit' => 'Dépôt',
-                    'withdrawal' => 'Retrait',
-                    'ride_payment' => 'Course',
-                    'commission' => 'Commission',
-                    default => $state,
-                }),
-                Tables\Columns\TextColumn::make('amount')->label('Montant')->money('CDF')->sortable(),
+                Tables\Columns\TextColumn::make('type')
+                    ->label('Type')
+                    ->badge()
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'deposit' => 'Dépôt',
+                        'withdrawal' => 'Retrait',
+                        'ride_payment' => 'Course',
+                        'commission' => 'Commission',
+                        default => $state,
+                    })
+                    ->color(fn (string $state): string => StatusColorHelper::transactionTypeColor($state)),
+                CurrencyFormatter::configureMoneyColumn(
+                    Tables\Columns\TextColumn::make('amount')->label('Montant')->sortable()
+                ),
                 Tables\Columns\TextColumn::make('ride_id')->label('Course'),
                 Tables\Columns\TextColumn::make('created_at')->label('Date')->dateTime('d/m/Y H:i')->sortable(),
             ])

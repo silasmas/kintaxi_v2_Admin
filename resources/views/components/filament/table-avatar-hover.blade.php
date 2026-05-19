@@ -12,7 +12,7 @@
     $wireKey = $wireKeyPrefix.($user?->getKey() !== null ? '-'.$user->getKey() : '-'.uniqid('', true));
 @endphp
 
-@if (! $user)
+@if (! $user instanceof \App\Models\User)
     <span class="fi-ta-placeholder text-sm text-gray-400 dark:text-gray-500">—</span>
 @else
     @php

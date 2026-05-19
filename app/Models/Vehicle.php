@@ -76,6 +76,11 @@ class Vehicle extends Model
         return $this->hasMany(FileModel::class);
     }
 
+    public function media(): HasMany
+    {
+        return $this->hasMany(Media::class, 'vehicle_id');
+    }
+
     public function features(): HasOne
     {
         return $this->hasOne(VehicleFeature::class);
